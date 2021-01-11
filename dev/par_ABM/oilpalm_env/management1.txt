@@ -1,0 +1,9 @@
+landuse,oilpalm
+management,enrichment
+labor_function,[a -> lut_function_labor_oilpalm a]
+tinput_function,[a -> lut_function_tinput_oilpalm a]
+invest_function,[a -> lut_function_invest_oilpalm a]
+price_tinput,0.5
+wages,1.6
+yield_factor,0.9
+external_income_factor,1.1

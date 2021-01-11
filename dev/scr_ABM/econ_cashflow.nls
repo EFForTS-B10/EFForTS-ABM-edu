@@ -1,0 +1,117 @@
+
+
+;###################################################################################
+; NET CASH FLOW
+;###################################################################################
+
+To-report calculate_net_cash_flow_cell [landuse age labor capitalstock tinput pp-management pp-ineff]
+ ;reports net cash flow [$] from one cell in one year based on land-use type, age, and the inputs labor, capitalstock, tinput, land
+    
+ let net-cash-flow 0 
+ 
+ let revenue calculate_revenue_cell landuse age labor tinput capitalstock pp-management pp-ineff
+ let recurrent-costs calculate_recurrent_costs_cell landuse pp-management labor capitalstock tinput
+ let investment-costs (optimal-invest landuse pp-management age)
+ 
+  ;print (word "Rev: " revenue " recurrent-costs: " recurrent-costs " investment-costs: " investment-costs)
+  
+ set net-cash-flow revenue - recurrent-costs - investment-costs
+   
+ report net-cash-flow
+End 
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report calculate-net-cash-flow-household [option-matrix inputs] 
+  ;reports net cash flow [$] of the whole household based for one year and one option and given factor inputs 
+  ;option matrix is a matrix with rows: field-ids, landuse, age, size, capital stock
+  ;inputs is a matrix with first rows: field-ids, labor inputs, tinput
+  
+  let net-cash-flow 0
+  
+  let number-of-fields item 1 matrix:dimensions option-matrix
+  let field 0
+  while [field < number-of-fields]
+  [
+    let landuse matrix:get option-matrix 1 field
+    let age matrix:get option-matrix 2 field 
+    let pp-management item landuse h_management
+    let pp-ineff item landuse h_inefficiencies
+    let labor matrix:get inputs 1 field
+    let tinput matrix:get inputs 2 field
+    let capitalstock matrix:get option-matrix 4 field 
+    let cash-flow-cell calculate_net_cash_flow_cell landuse age labor capitalstock tinput pp-management pp-ineff
+    let field-size matrix:get option-matrix 3 field
+    let net-cash-flow-patch cash-flow-cell * field-size
+    set net-cash-flow net-cash-flow + net-cash-flow-patch ;
+    set field field + 1 
+  ]
+
+  report net-cash-flow
+End 
+ 
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report calculate-accumulated-expected-cashflow [option-matrix]
+  ;calculates and reports the expected discounted cashflow accumulated over the time horizon of one option for one household
+  
+  let option-matrix-internal matrix:copy option-matrix 
+  let wealth-virtual h_wealth ;starts with the actual household wealth, but changes only the virtual wealth          
+  let accumulated-expected-cashflow 0
+  let debts h_debts  ; current debts of household
+      
+  let horizon 0
+  while [horizon <= time-horizon] ;while time horizon is not reached
+  [ 
+    ;substract fix consumption and take up new debts if necessary
+    let remove-consumption substract-fix-consumption-household wealth-virtual debts
+    set wealth-virtual item 0 remove-consumption
+    set debts item 1 remove-consumption
+       
+    ;substract unavoidable costs for investment, capital and land and take up new debts if necessary
+    let unavoidable-costs calculate-unavoidable-costs-household option-matrix-internal  
+    let remove-unavoidable-costs  substract-unavoidable-costs-household wealth-virtual debts unavoidable-costs
+    set wealth-virtual item 0 remove-unavoidable-costs
+    set debts item 1 remove-unavoidable-costs
+        
+    ;calculate factor inputs for labor and technical input in this year
+    let factor-inputs determine-factor-inputs-for-one-option option-matrix-internal wealth-virtual ;depends on this-optionmatrix (which changes age over time) and expexted household wealth         
+    let variable-factor-costs 0
+    set variable-factor-costs calculate-variable-factor-costs-household option-matrix-internal factor-inputs
+        
+    set wealth-virtual wealth-virtual - variable-factor-costs
+    if round wealth-virtual = 0 [set wealth-virtual 0]
+    if wealth-virtual < 0 
+    [
+      print "ERROR, this is not supposed to happen"
+    ]
+        
+    ;calculate net cashflow with these factor inputs
+    let net-cash-flow calculate-net-cash-flow-household option-matrix-internal factor-inputs ;calculate net cash flow
+               
+    ;calculate the discounted expected net cashflow over the time horizon
+    set accumulated-expected-cashflow accumulated-expected-cashflow + net-cash-flow / ((1 + discount-rate) ^ horizon) ; thats the value to report in the end
+   
+    ;variable additional consumption based on cash flow 
+    let variable-consumption calculate-variable-consumption-household net-cash-flow
+        
+    ;external income of the household
+    let external-income h_exincome
+        
+    ;calculate revenue from agrucultural land use in this year
+    let revenue calculate-household-revenue option-matrix-internal factor-inputs
+        
+    ;updated wealth: as all costs have been substracted already, now the revenue is added
+    set wealth-virtual wealth-virtual + revenue - variable-consumption + external-income 
+             
+    ;wealth is now automatically >= external-income + min-wealth       
+    set option-matrix-internal advance-option-matrix-to-next-year option-matrix-internal
+       
+    set horizon horizon + 1
+  ]
+ 
+  report accumulated-expected-cashflow
+End 

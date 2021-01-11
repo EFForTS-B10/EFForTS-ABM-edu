@@ -1,0 +1,473 @@
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to landmarket-init ;[fields]
+
+  ;; In this procedure, we initialize a landmarket turtle
+  ;; This turtle stores all relevant information on the seller (fields, prices) and buyers
+  
+  let lm_seller self
+  
+  hatch-lms 1 
+  [
+    set hidden? true
+    set lm_ticks ticks
+    set lm_seller_who [who] of lm_seller
+    set lm_seller_area [h_area] of lm_seller
+    set lm_seller_fields [h_patches] of lm_seller
+    set lm_seller_wealth [h_wealth] of lm_seller
+    set lm_seller_lut0_ineff item 0 [h_inefficiencies] of lm_seller
+    set lm_seller_lut1_ineff item 1 [h_inefficiencies] of lm_seller
+    
+    set lm_land_price landmarket-estimate-land-price lm_seller_fields
+  ]
+
+  ;; Count number of fresh created lms:
+  set lm_new lm_new + 1
+
+  
+  ;; Determine the land price
+ ; let price-for-land landmarket-estimate-land-price fields
+  ;print (word "Landmarket open: Fields: " fields " Price: " price-for-land)
+  
+  ;; Set up the pool of potential buyers
+ ; let pool landmarket-create-buyers-pool fields
+  
+  ;>>>> OUTPUT landmarket metrics: Set pool stats of lm turtle:
+  ;landmarket-output-set-lm-pollall lm_current pool
+  
+  ;; Calculate financial yield for potential buyers:
+;  set pool landmarket-calc-financial-yield fields pool price-for-land
+  
+  ;;>>>> OUTPUT landmarket metrics of remaining potential buyers
+ ; landmarket-output-set-lm-pollpot lm_current pool
+
+  ;; If there are buyers remaining, select the buyer with the highest financial yield:
+ ; let buyer.who landmarket-determine-buyer-who pool
+  
+   ;; OUTPUT landmarket metrics of seller: 
+ ; landmarket-output-set-lm-buyer-prebuy lm_current buyer.who
+
+  ;; Process landmarket transaction (update agent variables, kill remaining pool agents, ...)
+ ; set buyer.who landmarket-select-buyer fields pool buyer.who
+  
+ ; landmarket-output-set-lm-buyer-postbuy lm_current buyer.who
+ 
+end
+
+to landmarket-auction
+  
+  ;print "----------------------------"
+  ;; In this procedure a set of field ids can be bought by other agents
+  ;; These agents can be either from the local neighborhood or immigrants which enter the model
+  
+  ;; Reset landmarket globals:
+  landmarket-globals-reset
+  
+  ask lms
+  [
+    ;; Create a buyer pool for this market:
+    let pool landmarket-create-buyers-pool
+
+    ;; Store pool data in lm turtle:
+    set lm_poolall_wealth mean [h_wealth] of pool
+    set lm_poolall_immigrant count pool with [h_immigrant? = TRUE] / count pool
+    
+    ;; Calculate financial yield for potential buyers and report only a pool of potential buyers
+    set pool landmarket-calc-financial-yield lm_seller_fields pool lm_land_price
+
+    ;; Update landmarket metrics of remaining potential buyers
+    set lm_poolpot_wealth ifelse-value (any? pool) [mean [h_wealth] of pool][-999]
+    set lm_poolpot_immigrant ifelse-value (any? pool) [count pool with [h_immigrant? = TRUE] / count pool][-999]
+    
+    ;;;;;;;;;
+    ;ask pool [print (word "immi? " h_immigrant? "/ yield: " h_landmarket)]
+    ;;;;;;;;;
+    
+    
+    ;; If there are buyers remaining, select the buyer with the highest financial yield:
+    let buyer.who landmarket-determine-buyer-who pool
+    
+    ;; landmarket metrics of final buyer: 
+    set lm_buyer_wealth ifelse-value (buyer.who != -999) [[h_wealth] of hh buyer.who][-999]
+    set lm_buyer_immigrant ifelse-value (buyer.who != -999) [ifelse-value ([h_immigrant?] of hh buyer.who = TRUE) [1][0]][-999]
+    
+     ;; Process landmarket transaction (update agent variables, kill remaining pool agents, ...)
+    set buyer.who landmarket-select-buyer lm_seller_fields pool buyer.who
+    
+    ;; Set final landmarket metrics of final buyer after transaction:
+    set lm_buyer_who buyer.who
+    set lm_buyer_area ifelse-value (buyer.who != -999) [[h_area] of hh buyer.who][-999]
+    set lm_buyer_lut0_ineff ifelse-value(buyer.who != -999) [item 0 [h_inefficiencies] of hh buyer.who][-999]
+    set lm_buyer_lut1_ineff ifelse-value(buyer.who != -999) [item 1 [h_inefficiencies] of hh buyer.who][-999]
+    
+    ;; If land was sold, this lm can be removed
+    ;; But before we do this, we want to store the properties as globals:
+    if (buyer.who != -999) [landmarket-auction-successful]
+  ]
+  
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to landmarket-globals-reset
+  
+  set lm_new 0
+  set lm_seller_wealth_log []      ; wealth of all agents who sold land on a landmarket auction
+  set lm_seller_area_log []        ; area of all agents who sold land on a landmarket auction
+  set lm_seller_lut0_ineff_log []  ; lut0 inefficiency of all agents who sold land on a landmarket auction
+  set lm_seller_lut1_ineff_log []  ; lut1 inefficiency of all agents who sold land on a landmarket auction
+  set lm_buyer_wealth_log []      ; wealth of all agents who bought land on a landmarket auction
+  set lm_buyer_area_log []        ; area of all agents who bought land on a landmarket auction
+  set lm_buyer_lut0_ineff_log []  ; lut0 inefficiency of all agents who bought land on a landmarket auction
+  set lm_buyer_lut1_ineff_log []  ; lut1 inefficiency of all agents who bought land on a landmarket auction
+  
+end
+
+to landmarket-auction-successful
+  
+  ;; Update global landmarket variables:
+  set lm_seller_wealth_log lput lm_seller_wealth lm_seller_wealth_log      ; wealth of all agents who sold land on a landmarket auction
+  set lm_seller_area_log lput lm_seller_area lm_seller_area_log        ; area of all agents who sold land on a landmarket auction
+  set lm_seller_lut0_ineff_log lput lm_seller_lut0_ineff lm_seller_lut0_ineff_log  ; lut0 inefficiency of all agents who sold land on a landmarket auction
+  set lm_seller_lut1_ineff_log lput lm_seller_lut1_ineff lm_seller_lut1_ineff_log  ; lut1 inefficiency of all agents who sold land on a landmarket auction
+  set lm_buyer_wealth_log lput lm_buyer_wealth lm_buyer_wealth_log      ; wealth of all agents who bought land on a landmarket auction
+  set lm_buyer_area_log lput lm_buyer_area lm_buyer_area_log        ; area of all agents who bought land on a landmarket auction
+  set lm_buyer_lut0_ineff_log lput lm_buyer_lut0_ineff lm_buyer_lut0_ineff_log  ; lut0 inefficiency of all agents who bought land on a landmarket auction
+  set lm_buyer_lut1_ineff_log lput lm_buyer_lut1_ineff lm_buyer_lut1_ineff_log  ; lut1 inefficiency of all agents who bought land on a landmarket auction
+ 
+  ;; Remove landmarket
+  die
+  
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+;to landmarket-remove-old-lms
+;  ask lms [die]
+;end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report landmarket-estimate-land-price [fields]
+  
+  ;; For now we keep it simple and use the land_price parameter + x%
+  let land-price land_price * count fields * patch_size
+  let price-increase-percent land_price_increase
+  let total-price (land-price + (land-price * price-increase-percent))
+  report total-price
+  
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report landmarket-create-buyers-pool
+  
+  ;; Now we try to find a new owner for these fields:
+  ;; First we initialize a pool of candidates (size =n)
+  ;; This pool consist of neighboring households and freshly initialized immigrant households - based on the probability:
+  let pool_immigrant_probability immigrant_probability
+  let pool_n min (list buyer_pool_n (count other hhs))
+  
+  ;; Create a list with the n closest neighbors:
+  let pool_neighbrs min-n-of pool_n other hhs [distance myself]
+  let pool_total (no-turtles)
+   
+  hatch-hhs pool_n
+  [
+    set pool_total (turtle-set pool_total self)
+    
+    ;; We first have to decide if neighbor or immigrant:
+    ifelse (random-float 1 < pool_immigrant_probability)
+    [
+      ;;Create a new immigrant household:      
+      ;; Initialize basic household variables:
+      set h_inefficiencies landmarket-immigrant-inefficiency
+      set h_wealth landmarket-immigrant-wealth
+      set h_age draw-hh-age 
+      set h_immigrant? TRUE
+      set h_management draw-household-management
+      set h_land-use-change draw-land-use-change-list
+      set h_id who
+      set h_homebase patch-here
+      set h_exincome external_income
+      set h_connected_hhs (no-turtles)
+      
+      ;; Initialize ownership
+      set h_patches [lm_seller_fields] of myself
+      ask h_patches 
+      [
+        set p_owner [h_id] of myself
+        set p_management item p_landuse [h_management] of myself
+      ]
+      
+      set h_field_id_list remove-duplicates [p_id] of h_patches  
+      set h_capitalstock sum [p_capitalstock] of h_patches 
+      set h_area count h_patches
+    ]
+    [
+      ;; Create a household with properties like one neighbor:
+      let neighbr-temp one-of pool_neighbrs
+      ask neighbr-temp [set pool_neighbrs other pool_neighbrs]
+      
+      ;; Initialize basic household variables:
+      set h_wealth [h_wealth] of neighbr-temp
+      set h_age [h_age] of neighbr-temp
+      set h_inefficiencies [h_inefficiencies] of neighbr-temp
+      set h_exincome [h_exincome] of neighbr-temp
+      set h_immigrant? [h_id] of neighbr-temp
+      set h_management [h_management] of neighbr-temp
+      set h_land-use-change [h_land-use-change] of neighbr-temp
+      set h_id who
+      set h_homebase patch-here
+      
+      ;; Initialize ownership
+      set h_patches [lm_seller_fields] of myself ;(patch-set fields [h_patches] of neighbr-temp) ;fields   ;(patch-set [h_patches] of neighbr-temp bankrupt-fields)  ;; DECIDE IF NEIGHBOR HOUSEHOLD SHOULD CALCULATE WITH ALL HIS FIELDS OR ONLY THE NEW ONES
+      ask h_patches 
+      [
+        set p_owner [h_id] of myself
+        set p_management item p_landuse [h_management] of myself
+      ]
+      set h_field_id_list remove-duplicates [p_id] of h_patches  
+      set h_capitalstock sum [p_capitalstock] of h_patches 
+      set h_area count h_patches  
+    ]
+  ]
+  
+  report pool_total
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to-report landmarket-immigrant-inefficiency
+  
+  let inefficiencies draw-inefficiencies-each-lut
+  ;print (word "Ineff before: " inefficiencies)
+  set inefficiencies (map [[a b] -> a - (a * b)] inefficiencies read-from-string immigrant-xp-bonus)
+  ;print (word "Ineff after: " inefficiencies)
+  
+  report inefficiencies
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to-report landmarket-immigrant-wealth
+  
+  let valid FALSE
+  let wealth 0
+  
+  ifelse (initial-wealth-distribution = "log-normal")
+  [
+    while [valid = FALSE]
+    [
+      set wealth round(exp(random-normal wealth-log-mean wealth-log-sd)) 
+      if wealth >= min-wealth
+      [  
+        set wealth (wealth * immigrant-wealth-factor)     
+        set valid TRUE
+      ]
+    ]
+  ]  
+  [
+    ;; COnstant wealth:
+    set wealth wealth-constant
+  ]
+  
+  report wealth
+  
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report financial-yield-savings [saving]
+  
+  let p rent_rate_capital_lend
+  let t time-horizon
+  let K saving
+  let savings_total (K * ((1 + (p / 100)) ^ t))
+  
+  ;; Only calculate yield, if saving != 0
+  let yield ifelse-value (saving != 0) [(savings_total - saving) / saving][0]
+  report yield
+  
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report landmarket-calc-financial-yield [fields pool price-for-land]
+  
+  ;; We have to split up the pool into different categories:
+  ;; Group one can pay the land-price from wealth
+  ;; Group two has to take debts to pay for the land
+  ask pool
+  [
+    ifelse ((h_wealth - price-for-land) >= min-wealth)
+    [
+      ;; This household can pay the land from its welath
+      ;; It will just compare the financial yield from th efield with the financial yield from a savings account
+      let exp_netcashflow perform-lu-and-production-decision-buy-land
+      
+      ;; The expected netcashflow can be "na" if there is no affordable option with this land (e.g. if additional investment costs have to be payed)
+      ;; In such cases, the potential buyer dies immediately:
+      if (exp_netcashflow = "na") [die]
+      
+      let financial-yield-land (exp_netcashflow - price-for-land) / price-for-land
+      let financial-yield-sav financial-yield-savings price-for-land
+      
+    ;  print (word "no debts - Land: " financial-yield-land " / savings: " financial-yield-sav)
+      
+      ;; Only remain in the pool if land yield is higher than savings yield:
+      ifelse (financial-yield-land < financial-yield-sav) [die][set h_landmarket (list price-for-land financial-yield-land)]
+      
+    ]
+    [
+      ;; This household has to take up debts. That means, we have to add rent_rate_captial_borrow to the land_price:
+      ;; Calculat the amoun of debts, the household has to take:
+      let new-debts (price-for-land - (h_wealth - min-wealth))
+      let capital-costs (new-debts + (new-debts * rent_rate_capital_borrow))
+      let total-price-for-land (price-for-land + capital-costs)
+      
+      ;; Calculate expected cashflow:
+      let exp_netcashflow perform-lu-and-production-decision-buy-land
+      
+      ;; The expected netcashflow can be "na" if there is no affordable option with this land (e.g. if additional investment costs have to be payed)
+      ;; In such cases, the potential buyer dies immediately:
+      if (exp_netcashflow = "na") [die]
+      
+      ;; We can compare it to savings for all remaining welath without taking up debts:
+      let financial-yield-land (exp_netcashflow - total-price-for-land) / total-price-for-land
+      let financial-yield-sav financial-yield-savings (h_wealth - min-wealth)
+      
+    ;  print (word "debts - Land: " financial-yield-land " / savings: " financial-yield-sav)
+      
+      ;; Only remain in the pool if land yield is positive and higher than savings yield:
+      ifelse (financial-yield-land < financial-yield-sav or financial-yield-land <= 0) [die][set h_landmarket (list total-price-for-land financial-yield-land)]
+    ] 
+  ]
+  report pool
+  
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report landmarket-determine-buyer-who [pool]
+  let buyer.who -999
+  ;; If there is anyone left in the pool:
+  if (any? pool)
+  [
+    set buyer.who [who] of max-one-of pool [item 1 h_landmarket]
+  ]
+  report buyer.who
+end
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report landmarket-select-buyer [fields pool buyer.who]
+  
+  ;; If there is anyone left in the pool:
+  ifelse (any? pool)
+  [
+    ;; Find the one with max yield:
+    ask hh buyer.who
+    [
+      ;; First we kill all other households from the pool:
+      ask other pool [die]
+      set shape "house2"
+      set color hh-color
+      set size 2
+      set hidden? false
+      ;print (word "Bankrupt fields redistributed to immigrant?/parent-ID " h_immigrant? "; exp netcashflow " h_netcashflow_exp)
+  
+      ;; Pay the land price:
+      let total-land-price item 0 h_landmarket
+      ifelse (total-land-price < (h_wealth - min-wealth))
+      [
+        set h_wealth (h_wealth - total-land-price)
+      ]
+      [
+        let new-debts (total-land-price - (h_wealth - min-wealth))
+        set h_debts (h_debts + new-debts)
+        set h_wealth min-wealth
+      ]
+
+      ;; Then set the remaining agent variables:
+      ifelse (h_immigrant? = TRUE)
+      [
+        ;; If the best household is an immigrant household, we just update the household and ownership variables
+        ;; Initialize ownership
+        set h_patches fields
+        ask h_patches [set p_owner myself]
+        set h_field_id_list remove-duplicates [p_id] of h_patches  
+        set h_capitalstock sum [p_capitalstock] of h_patches 
+        set h_area count h_patches 
+      ]
+      [
+        ;; If the best household is a neighboring household we have to update the variables of the original owner
+        ask one-of hhs with [h_id = [h_immigrant?] of myself]
+        [
+          set h_patches (patch-set h_patches fields)
+          ask h_patches [set p_owner myself]
+          set h_field_id_list remove-duplicates [p_id] of h_patches  
+          set h_capitalstock sum [p_capitalstock] of h_patches 
+          set h_area count h_patches
+          ;; Update buyer.who
+          set buyer.who who
+        ]
+      
+        ;; Kill the copy of the neighboring household:
+        die
+      ]
+    ]
+  ]
+  [
+   ;; What happens if there is no buyer?
+    ;; nothing -> land will be offered next tick again!
+  ]
+  
+  report buyer.who
+
+End
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report perform-lu-and-production-decision-buy-land
+   
+  let exp_netcashflow "na"
+  if h_area > 0
+  [     
+    let number-of-fields length h_field_id_list
+      
+    let all-options-matrix make-option-matrix number-of-fields ;makes a matrix with all possible options 0 stands for staying with the same landuse in this field, 1 change to oil palm, 2 change to rubber...
+    
+    let affordable-options determine-affordable-options all-options-matrix ;affordable options is a list were every entry contains the land-uses of the different patches under this option
+                                                                           ;if no option is affordable no land-use change occurs. This is likely also the least cost option, as land-use change always involvles high investment costs in the beginning
+    ifelse affordable-options = [] ;no option is affordable
+    [
+      ;select option with no land use change
+      ;apply this, i.e. calculate factor inputs etc 
+      let this-option matrix:get-row all-options-matrix 0
+      let this-option-matrix construct-option-matrix this-option ;constructs a matrix containing the rows: field-ids, land uses, age, field size, capital stock
+      set exp_netcashflow calculate-accumulated-expected-cashflow this-option-matrix
+    ]
+    [
+      ;go through all affordable options and calculate the expected net cash flow
+      let expected-net-cashflows [] ;list of expected net cashflows from the different affordable options   
+      let option 0
+      while [option < length affordable-options]
+      [  
+        let this-option item option affordable-options ;list containing one of the affordable options
+        let this-option-matrix construct-option-matrix this-option ;constructs a matrix containing the rows: field-ids, land uses, age, field size, capital stock
+        let accumulated-expected-cashflow-this-option calculate-accumulated-expected-cashflow this-option-matrix ;start with the actual h_wealth
+        set expected-net-cashflows lput accumulated-expected-cashflow-this-option expected-net-cashflows ; store the accumulated discounted cash flow for later comparison between options
+        set option option + 1
+      ]
+      
+      ;print  expected-net-cashflows
+      set exp_netcashflow max expected-net-cashflows
+    ] ;ifelse affordable-options = [] ;no option is affordable
+   
+  ] ; if h_area > 0
+  
+  report exp_netcashflow
+
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

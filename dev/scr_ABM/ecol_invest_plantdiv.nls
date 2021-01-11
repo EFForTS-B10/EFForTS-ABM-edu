@@ -1,0 +1,382 @@
+;;=========================================================================================
+;;=========================================================================================
+;;
+;; ATTEMPT 2:
+;; Modelling Marginal Biodiversity Values
+;; Adapted from the invest landuse change model
+;; Explanation can be found here: 
+;; https://books.google.de/books?id=s-AVDAAAQBAJ&pg=PA234&lpg=PA234&dq=calculate+%22marginal+biodiversity+value%22&source=bl&ots=VizoibzWxq&sig=6yADRPd9HcTj4wknOP2UsUDD6N0&hl=de&sa=X&ved=0ahUKEwibv9OY2IDVAhVGvxQKHXXXD4QQ6AEIMTAC#v=onepage&q=calculate%20%22marginal%20biodiversity%20value%22&f=false
+;;
+;;=========================================================================================
+;;=========================================================================================
+;
+;to init_invest_plantdiv
+;  
+;  ; Adjust landuse values 
+;  ; -> This is a temporary fix -> I might think about how to change the structure of the code to work with other landuse values
+;  adjust-landuse-invest
+;  
+;  ;; Read globals:
+;  ;; First we have to read species probability data:
+;  plantdiv_read_data 
+;  ;; Then we define weights to the species
+;  plantdiv_calculate_weights
+;  
+;  ;; Do first calculation for initial landscape:
+;  ;; Here we calculate the actual MBV values
+;  plantdiv_calculate_mbv
+;  
+;  ;; Paint mbv as scale color
+;  ;plantdiv_paint_mbv
+;  
+;  ;; Store the base-landscape mbv value:
+;  ask patches[set p_MBVx p_MBV set p_RMBV []]
+;  
+;  ; Adjust landuse values back to abm mode:
+;  adjust-landuse-abm
+;  
+;end
+;
+;to update_invest-Plantdiv
+;  
+;  ; Adjust landuse values 
+;  ; -> This is a temporary fix -> I might think about how to change the structure of the code to work with other landuse values
+;  adjust-landuse-invest
+;  
+;  ;; Do first calculation for initial landscape:
+;  ;; Here we calculate the actual MBV values
+;  plantdiv_calculate_mbv
+;  
+;  ;; Paint mbv as scale color
+;  ;plantdiv_paint_mbv
+;  
+;  ask patches[set p_RMBV lput (p_MBV / p_MBVx) p_RMBV]
+;  
+;  plot_invest_plantdiv
+;  
+;  ; Adjust landuse values back to abm mode:
+;  adjust-landuse-abm
+;  
+;end
+;
+;to adjust-landuse-invest
+;    
+;  ;; TEMPORARY ADJUSTMENT:
+;  ;; The functions use while loops to loop trough landuses
+;  ;; Forest must have landuse 4
+;  ask patches 
+;  [
+;    if (p_landuse = -100) [set p_landuse 4]
+;    if (p_landuse = 1) [set p_landuse 2]
+;    if (p_landuse = 0) [set p_landuse 1]
+;    if (p_road = 1 and p_landuse = 4) [set p_landuse 0]
+;  ]
+;end
+;
+;to adjust-landuse-abm
+;      
+;  ;; TEMPORARY ADJUSTMENT:
+;  ;; The functions use while loops to loop trough landuses
+;  ;; Forest must have landuse 4
+;  ask patches
+;  [
+;    if (p_landuse = 0) [set p_landuse -100]
+;    if (p_landuse = 4) [set p_landuse -100]
+;    if (p_landuse = 1) [set p_landuse 0]
+;    if (p_landuse = 2) [set p_landuse 1]
+;  ]
+;end
+;
+;
+;;*************************************************************
+;; Read plant probability data:
+;;*************************************************************
+;to plantdiv_read_data 
+;
+;print "Read plant data..."
+;
+;  ;; Reset global prob list:
+;  set plantdiv_all_probs []
+;  
+;  ;;; Read file:
+;  let filename "input/plants/species_probs.csv"
+;  file-open filename
+;  
+;  ;;SKip header:
+;  repeat 6 [let drop file-read]
+;  
+;  while [not file-at-end?]
+;  [
+;    ;;Read species and store them in lists
+;    let rownr file-read
+;    let species file-read
+;    let fo_prob file-read
+;    let jr_prob file-read
+;    let op_prob file-read
+;    let rm_prob file-read
+;    let group file-read
+;  
+;    ;; Create temporary list:  ["p_landuse 0 prob" "p_landuse 1 prob" "..." "p_landuse 4 prob" "species" "species-group (general/corespecies)"]
+;    ;; other= 0, op=1, rm=2, jr=3, fo=4
+;    let species_probs (list fo_prob op_prob rm_prob jr_prob fo_prob species) 
+;  
+;    set plantdiv_all_probs lput species_probs plantdiv_all_probs
+;  ]
+;  
+;  file-close
+;
+;end
+;
+;;*************************************************************
+;; Define weights for plants
+;;*************************************************************
+;to plantdiv_calculate_weights
+;  
+;  ;; SImple assumption - we give high weight to all species, which are forest only:
+;  let nr-of-species length plantdiv_all_probs
+;  let ws_default (1 / nr-of-species)
+;  let ws_bonus 1.5
+;  set ws_list []
+;  
+;  ;; Count species with forest only:
+;  foreach plantdiv_all_probs
+;  [ ? ->
+;    
+;    let ws_temp ws_default
+;    
+;    ;; Check if forest only species:
+;    if ((item 4 ? > 0) and (sum (sublist ? 1 4) = 0))
+;    [
+;      set ws_temp ws_default * ws_bonus
+;    ]
+;  
+;    set ws_list lput ws_temp ws_list
+;  ]
+;  
+;end
+;
+;
+;
+;;*************************************************************
+;; Calculate the MBV value of each cell
+;;*************************************************************
+;to plantdiv_calculate_mbv
+;  
+;  print "Calculate CAH matrix..."
+;  
+;  let Axk_list crt-Axk-list
+;  let HxsWs_list []
+;  
+;  ;; Prepare empty list for CsjD results (one CsjD value for each landuse)
+;  let CsjD_all []
+;  let s 0
+;  foreach plantdiv_all_probs
+;  [ probs ->
+;     ;; Create a potential range matrix for this species:
+;    let Hxs crt-Hxs probs Axk_list
+;    let ws item s ws_list
+;    set HxsWs_list lput (matrix:times Hxs ws) HxsWs_list
+;    let CsjD_list []
+;    
+;    let j 0
+;    while [j <= 4]
+;    [ 
+;      
+;     
+;      ;; Select the current main landuse probability for this species:
+;      let Csj item j probs
+;      let CsAkHs 0
+;      
+;      ;; Loop trough other landuses:
+;      let k 0
+;      while [k <= 4]
+;      [
+;        ;;Select the current Axk from the Axk list 
+;        let Axk item k Axk_list
+;        ;; Select the prorbability for this landuse from the species list
+;        let Csk item k probs
+;        
+;        ;; Calculate the matrix product:
+;        let CskAxkHxs (matrix:times-scalar (matrix:times-element-wise Axk Hxs) Csk)
+;        
+;        ;; Sum up over all cells x:
+;        set CsAkHs (CsAkHs + (sum (map [? -> sum ?] matrix:to-row-list CskAxkHxs)))
+;        ;print CsAkHs
+;        set k (k + 1)
+;      ];;end of while k
+;      
+;      let CsjD_temp ifelse-value(CsAkHs != 0) [(Csj / CsAkHs)][0]
+;      
+;      set CsjD_list lput CsjD_temp CsjD_list 
+;      
+;      set j (j + 1)
+;      
+;    ] ;;end of while j
+;    
+;    set CsjD_all lput CsjD_list CsjD_all
+;    set s (s + 1)
+;  ]     
+;   
+;   print "Now distributing MBV values to patches..." 
+;  ;; Distribute to patches
+;   let MBVx matrix:make-constant world-width world-height 0
+;   set s 0
+;   
+;   foreach plantdiv_all_probs
+;   [
+;     let AxjCsjd matrix:make-constant world-width world-height 0
+;     let j 0
+;     
+;     while [j <= 4]
+;     [
+;       ;; Select the current Axk from the Axklist:
+;       let Axj item j Axk_list
+;       let CsjD (item j (item s CsjD_all))
+;       
+;       set AxjCsjd (matrix:plus AxjCsjd (matrix:times Axj CsjD))
+;       
+;       set j (j + 1)
+;     ]
+;     
+;    let HxsWs item s HxsWs_list
+;    
+;    let MBVx_temp (matrix:times-element-wise HxsWs AxjCsjD)
+;    
+;    set MBVx (matrix:plus MBVx MBVx_temp)
+;     
+;    set s (s + 1)
+;   ]
+;  
+;   ask patches
+;   [
+;     set p_mbv matrix:get MBVx pxcor pycor
+;    ;print p_mbv
+;   ]
+;       
+;       
+;
+;  
+;end
+;
+;;*************************************************************
+;; Helper function that creates a potential distribution matrix of a species
+;;*************************************************************
+;
+;to-report crt-Hxs [sp-prob-list Axk-list]
+;  
+;  let Hxs_temp matrix:make-constant world-width world-height 0
+; 
+;  ;; Check first item of axk list and first prob of sp-prob
+;  let i 0
+;  foreach Axk-list
+;  [ axk_j ->
+;    if (item i sp-prob-list > 0)
+;    [
+;      set Hxs_temp matrix:plus Hxs_temp axk_j
+;    ]
+;    
+;    set i (i + 1)
+;  ]
+;  
+;  ;print (word "Hxs_temp before map: " Hxs_temp)
+;  
+;  ;; Now each cell which is > 0 is potential habitat:
+;  set Hxs_temp matrix:map [? -> ifelse-value (? > 0)[1][0]] Hxs_temp
+;  ;print (word "Hxs_temp after map: " Hxs_temp)
+;  report Hxs_temp
+;  
+;end
+;
+;;*************************************************************
+;; Helper function that creates a matrix of moving window land use fractions of each cell
+;;*************************************************************
+;to-report crt-Axk-list
+;
+;  let Axk_list []
+;  let k 0
+;  let cell-weight 0.6
+;  
+;  while [k <= 4]
+;  [
+;    let Axk_temp matrix:make-constant world-width world-height 0
+;   
+;    ask patches
+;    [ 
+;      let nbr-weight ((1 - cell-weight) / count neighbors)
+;      ;; Calculate the fraction of the current landuse in this cell
+;      let p_landuse_frac ((nbr-weight * count neighbors with [p_landuse = k]) + (cell-weight * ifelse-value (p_landuse = k)[1][0]))
+;      ;; Store the result in the matrix
+;      matrix:set Axk_temp pxcor pycor p_landuse_frac
+;    ]
+;    
+;    set Axk_list lput Axk_temp Axk_list
+;    set k (k + 1)
+;  ]
+;  report Axk_list
+;  
+;end
+;
+;
+;
+;;*************************************************************
+;; Paint mbv values of cells as scale color
+;;*************************************************************  
+;to plantdiv_paint_mbv
+;  
+;  let min_p_mbv min [p_mbv] of patches
+;  let max_p_mbv max [p_mbv] of patches
+;  
+;  ask patches
+;  [
+;    set pcolor scale-color green p_mbv min_p_mbv max_p_mbv 
+;  ]
+;end
+;
+;
+;
+;to invest_plantdiv_paint_rmbv
+;  
+;  let time invest_plantdiv_paint_t   
+;  let min_rmbv 0.5 ;min map [? -> item time ?] [p_RMBV] of patches
+;  let max_rmbv 1.5 ;max map [? -> item time ?] [p_RMBV] of patches
+;
+;  ask patches
+;  [
+;    set pcolor ifelse-value (item time p_rmbv >= 1)
+;    [
+;      scale-color green item time p_RMBV max_rmbv 1
+;    ]
+;    [
+;      scale-color red item time p_RMBV min_rmbv 1
+;    ]
+;    
+;  ]
+;  
+;  display
+;    
+;end
+;
+;to plot_invest_plantdiv
+;  
+;  set-current-plot "invest_plantdiv"
+;  set-current-plot-pen "op"
+;  plot mean [(p_MBV / p_MBVx)] of patches with [p_landuse = 1]
+;    
+;  set-current-plot-pen "rm"
+;  plot mean [(p_MBV / p_MBVx)] of patches with [p_landuse = 2]
+;  
+;  set-current-plot-pen "fo"
+;  plot mean [(p_MBV / p_MBVx)] of patches with [p_landuse = 4]
+;  
+;  set-current-plot-pen "total"
+;  plot mean [(p_MBV / p_MBVx)] of patches
+;  
+;  set-current-plot "invest_plantdiv_hist"
+;  set-current-plot-pen "op"
+;  histogram [(p_MBV / p_MBVx)] of patches with [p_landuse = 1]
+;  set-current-plot-pen "rm"
+;  histogram [(p_MBV / p_MBVx)] of patches with [p_landuse = 2]
+;  
+;  
+;  
+;end
