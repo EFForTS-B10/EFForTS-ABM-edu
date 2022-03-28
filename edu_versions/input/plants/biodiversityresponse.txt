@@ -1,0 +1,5 @@
+"LULC" "NAME" "L_Techino" "L_Techinr" "L_Labino" "L_Labinr" "oilpalm" "rubber" "forest"
+"1" "1" "village" "0" "0" "0" "0" "0" "0" "1"
+"2" "2" "oilpalm" "0" "0" "0" "0" "0" "0" "1"
+"3" "3" "rubber" "0" "0" "0" "0" "0" "0" "1"
+"4" "4" "forest" "1/6" "1/6" "1/6" "1/6" "1/6" "1/6" "0"

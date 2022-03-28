@@ -1,0 +1,274 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Code specifically for the Advanced Education Version with Scenarios according to Dislich 2018 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+globals [global-lut-carbon-sum] ; "lut-carbon-sum" is a local variable in the main version
+
+
+
+to reset-parameters
+  ; reset parameters in Parameter tab
+  startup 
+  ; show Parameter tab
+  xw:select-tab 2 ; TODO: selecting by tab's key doesn't work?
+end
+
+
+
+;;;;;;;;;
+;; Run ;;
+;;;;;;;;;
+
+to run-scenario
+
+  print "Start running scenarios... This may take a while!"
+  print "Stop simulation? Tools -> Halt"
+
+  ; Change parameters according to the selected scenario
+  update-scenario-parameters
+
+  ; Define number of model replicates and timesteps of each run
+  let replicates n-replicates ; 
+  let modelsteps 50
+
+  ; Prepare file to store model results
+  let outputfile "output/scenarios_output.txt"
+  if (file-exists? outputfile) [
+    file-close 
+    file-delete outputfile]
+
+  do-scenario-replicates replicates modelsteps outputfile
+ ; do-scenario-output replicates modelsteps outputfile ; TODO: needed?
+
+  print "Finished running scenarios!"
+
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to update-scenario-parameters
+
+  ;; Set map:
+  xw:ask "which-map" [xw:set-selected-item  "hundred-farmers3"]
+
+  ;; Set seed to random seed:
+  xw:ask "reproducible?" [xw:set-selected? FALSE]
+
+  ;; Set price parameters:
+  ifelse (member? scenarios (list "CO" "CI" "CIL"))
+  [
+    xw:ask "price_scenario" [xw:set-selected-item  "constant_prices"]
+  ]
+  [
+    xw:ask "price_scenario" [xw:set-selected-item "historical_trends"]
+  ]
+
+  ;; Set Inefficiency parameter:
+  ifelse (member? scenarios (list "CI" "CIL" "HI" "HIL"))
+  [
+    xw:ask "heterogeneous-hhs?" [xw:set-selected? TRUE]
+  ]
+  [
+    xw:ask "heterogeneous-hhs?" [xw:set-selected? FALSE]
+  ]
+
+  ;; Set Learning parameter:
+  ifelse (member? scenarios (list "CIL" "HIL"))
+  [
+    xw:ask "learning-spillover?" [xw:set-selected? TRUE]
+  ]
+  [
+    xw:ask "learning-spillover?" [xw:set-selected? FALSE]
+  ]
+
+end
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to do-scenario-replicates [replicates modelsteps outputfile]
+
+  ; Define replicate counter for indexing
+  let i 1
+
+
+  file-open outputfile
+  file-type "["
+  file-close
+
+  ;; Do replicates:
+  repeat replicates
+  [
+    print (word "Starting run " i " of " replicates "!")
+
+    ; Setup the model
+    ca
+    load-globals-from-parameters-tab
+    setup-with-external-maps
+    ; Turn off any output:
+    ;set show-output? FALSE
+
+    ; Open outputfile to write output
+    file-open outputfile
+
+    ;; Run simulation for modelstep years:
+    repeat modelsteps
+    [
+      ; Execute model for one step
+      go
+      scenarios-do-plots
+      update-time
+
+      ; Store output of this time step in output file
+      file-type "["
+      file-write i
+      file-write ticks
+      file-write count patches with [p_landuse = 0]
+      file-write count patches with [p_landuse = 1]
+    ;;file-write mean [h_consumption] of hhs
+      file-write (ifelse-value (area_under_agriculture > 0) [last item 0 carbon / area_under_agriculture][0])
+      file-write (ifelse-value (area_under_agriculture > 0) [last item 1 carbon / area_under_agriculture][0])
+      file-write (ifelse-value (area_under_agriculture > 0) [global-lut-carbon-sum / area_under_agriculture][0])
+      file-type "]"
+    ]
+
+    ; Close file after one run has finished
+    file-close
+
+    ; Increment replicate counter
+    set i (i + 1)
+  ]
+
+  ;; Close output file
+  file-open outputfile
+  file-type "]"
+  file-close
+
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;
+;; Plots ;;
+;;;;;;;;;;;
+
+
+to scenarios-do-plots
+  scenarios-paint-plot-carbon
+  scenarios-paint-plot-price
+  scenarios-paint-plot-LUT-fractions
+  scenarios-paint-plot-consumption
+  scenarios-paint-plot-yield-gaps
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to scenarios-paint-plot-carbon
+  
+  set-current-plot "Carbon storage in agricultural area"
+  set global-lut-carbon-sum 0
+  ;; Plot LUT carbon:
+  foreach LUT-ids
+  [
+    LUT-id ->
+    create-temporary-plot-pen runresult (word "LUT-" LUT-id "-folder")
+    set-plot-pen-color runresult (word "LUT-" LUT-id "-color")
+    let lut-carbon last item LUT-id carbon
+    set global-lut-carbon-sum global-lut-carbon-sum + lut-carbon
+    plot (lut-carbon / area_under_agriculture)
+    
+  ]
+  ;; Total:
+  create-temporary-plot-pen "total"
+  set-plot-pen-color black
+  plot (global-lut-carbon-sum / area_under_agriculture)
+
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to scenarios-paint-plot-price
+  
+  set-current-plot "Historic Prices"  
+  foreach LUT-ids
+  [
+    LUT-id ->
+    create-temporary-plot-pen runresult (word "LUT-" LUT-id "-folder")
+    set-plot-pen-color runresult (word "LUT-" LUT-id "-color")
+    plot item LUT-id prices
+  ]
+    
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to scenarios-paint-plot-LUT-fractions
+  
+  set-current-plot "Land use type fractions"
+  foreach LUT-ids
+  [
+    LUT-id ->
+    
+    create-temporary-plot-pen runresult (word "LUT-" LUT-id "-folder")
+    set-plot-pen-color runresult (word "LUT-" LUT-id "-color")
+    plot item LUT-id LUT-fractions * 100
+  ]
+  
+end
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to scenarios-paint-plot-consumption
+  let mean_consumption mean [h_consumption] of hhs
+  let sd_consumption standard-deviation [h_consumption] of hhs
+  
+  set-current-plot "Household consumption"
+  
+  create-temporary-plot-pen "+ sd"
+  set-plot-pen-color gray + 2
+  ;set-plot-pen-mode 2
+  plot mean_consumption + sd_consumption
+  
+  create-temporary-plot-pen "mean"
+  set-plot-pen-color black
+  plot mean [h_consumption] of hhs
+  
+  create-temporary-plot-pen "- sd"
+  set-plot-pen-color gray + 2
+  ;set-plot-pen-mode 2
+  plot mean_consumption - sd_consumption
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to scenarios-paint-plot-yield-gaps 
+   set-current-plot "Yield gap"
+  let yield-gaps scenarios-calc-yield-gaps
+  foreach LUT-ids
+  [
+    lut-id ->
+    
+    create-temporary-plot-pen runresult (word "LUT-" LUT-id "-folder")
+    set-plot-pen-color runresult (word "LUT-" LUT-id "-color")
+    plot item LUT-id yield-gaps
+
+  ]
+  
+end
+
+to-report scenarios-calc-yield-gaps
+    let yield_gaps_all []
+    
+    foreach LUT-ids
+    [
+      lut-id ->
+      let yield_gap_lut []
+      ask hhs [
+      let sum_actual_yield sum [p_actual_production] of h_patches with [p_landuse = lut-id]
+      let sum_optimal_yield sum [p_optimal_production] of h_patches with [p_landuse = lut-id]
+      ;; If there is any optimal yield, calculate the yield gap:
+      let my_yield_gap ifelse-value (sum_optimal_yield > 0) [(sum_optimal_yield - sum_actual_yield) / sum_optimal_yield * 100][0]
+      set yield_gap_lut lput my_yield_gap yield_gap_lut
+    ]
+    set yield_gaps_all lput (mean yield_gap_lut) yield_gaps_all 
+
+  ]
+  report yield_gaps_all
+end
+
+

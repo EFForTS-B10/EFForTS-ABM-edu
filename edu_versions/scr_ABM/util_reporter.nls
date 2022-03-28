@@ -1,0 +1,110 @@
+
+
+
+;; Land-uses:
+to-report lut0.yield.sum
+  let lut0.yield 0
+  if (any? hhs) 
+  [
+    set lut0.yield precision sum map [? -> ifelse-value(is-list? ?)[item 0 ?][0]] [h_production] of hhs 3
+  ]
+  report lut0.yield
+end
+to-report lut1.yield.sum
+  let lut1.yield 0
+  if (any? hhs)
+  [
+    set lut1.yield precision sum map [? -> ifelse-value(is-list? ?)[item 1 ?][0]] [h_production] of hhs 3
+  ]
+  report lut1.yield
+end
+to-report lut0.yield.mean
+  let lut0.yield 0
+  if (any? hhs)
+  [
+    set lut0.yield precision mean map [? -> ifelse-value(is-list? ?)[item 0 ?][0]] [h_production] of hhs 3
+  ]
+  report lut0.yield
+end
+to-report lut1.yield.mean
+  let lut1.yield 0
+  if (any? hhs)
+  [
+    set lut1.yield precision mean map [? -> ifelse-value(is-list? ?)[item 1 ?][0]] [h_production] of hhs 3
+  ]
+  report lut1.yield
+end
+to-report lut0.carbon
+  report item 1 item 0 carbon
+end
+to-report lut1.carbon
+  report item 1 item 1 carbon
+end
+to-report lut0.price
+  report item 0 prices
+end
+to-report lut1.price
+  report item 1 prices
+end
+to-report lut0.fraction
+  report item 0 LUT-fractions
+end
+to-report lut1.fraction
+  report item 1 LUT-fractions
+end
+
+
+;; Household properties
+to-report hh.count
+  report count hhs
+end
+to-report hh.count.immigrant
+  report count hhs with [h_immigrant? = TRUE]
+end
+to-report hh.area.mean
+  let hh.area 0
+  if (any? hhs)
+  [
+    set hh.area precision mean [h_area] of hhs 3
+  ]
+  report hh.area
+end
+to-report hh.area.sum
+  let hh.area 0
+  if (any? hhs)
+  [
+    set hh.area precision sum [h_area] of hhs 3
+  ]
+  report hh.area
+end
+to-report hh.consumption.mean
+  report mean_hh_consumption
+end
+to-report hh.consumption.sum
+  report mean_hh_consumption
+end
+to-report hh.lut0.ineff.mean
+  report mean map [x -> item 0 x][h_inefficiencies] of hhs
+end
+to-report hh.lut1.ineff.mean
+  report mean map [x -> item 1 x][h_inefficiencies] of hhs
+end
+
+;; TECHNICAL INPUTS
+to-report p.tinput.sum
+  report sum [p_tinput] of patches
+end
+to-report p.tinput.mean
+  report mean [p_tinput] of patches
+end
+
+;; CAPITALSTOCK
+to-report p.capitalstock.sum
+  report sum [p_capitalstock] of patches
+end
+to-report p.capitalstock.mean
+  report mean [p_capitalstock] of patches
+end
+
+
+

@@ -1,0 +1,140 @@
+to set-gui-parameters-to-default
+  
+  set-efforts-abm-defaults
+  set-efforts-lgraf-defaults
+  
+end
+
+
+to set-efforts-abm-defaults
+  
+  set reproducible? FALSE
+  set rnd-seed 1234
+  set write-maps? FALSE
+  set export-view? FALSE
+  set show-roads? TRUE
+  set show-homebases? TRUE
+  set write-hh-data-to-file? FALSE
+  set which-map "hundred-farmers3"
+  set land-use-change-decision "only-one-field-per-year"
+  set sim-time 50
+
+  set price_scenario "constant_prices"
+  set price-fluctuation-percent 10
+  set min-wealth 30
+  set time-horizon 10
+  set discount-rate 0.1
+  set initial-wealth-distribution "log-normal"
+  set wealth-log-mean 7
+  set wealth-log-sd 1
+  set wealth-constant 10000
+  set init-wealth-correction-factor 10
+  set consumption-on? TRUE
+  set consumption_base 1000
+  set consumption_frac_wealth 0.05
+  set consumption_frac_cash 0.1
+  set h_debt_years_max_bankrupt 5
+  set heterogeneous-hhs? FALSE
+  set learning-spillover? FALSE
+  set setup-hh-network "hh-nw-kernel-distance"
+  set hh-nw-param1 10
+  set hh-nw-param2 50
+  set spillover-share 1 
+  set external_income 500
+  set rent_rate_land 0.1
+  set rent_rate_capital_borrow 0.15
+  set land_price 750
+  
+  set LUT-0-folder "oilpalm"
+  set LUT-0-color 24
+  set LUT-0-price 90
+  set LUT-0-price-sd 10
+  
+  set LUT-1-folder "rubber"
+  set LUT-1-color 44
+  set LUT-1-price 1100
+  set LUT-1-price-sd 100
+  
+  set LUT-2-folder "0"
+  set LUT-2-price 0
+  set LUT-2-price-sd 0
+  set LUT-2-color 34
+  set LUT-3-folder "0"
+  set LUT-3-price 0
+  set LUT-3-price-sd 0
+  set LUT-3-color 84
+  set LUT-4-folder "0"
+  set LUT-4-price 0
+  set LUT-4-price-sd 0
+  set LUT-4-color 134
+  
+  set matrix-color 52
+  set road-color 9.9
+  set inacc-color 5
+  set hh-color 8
+  
+end
+
+
+to set-efforts-lgraf-defaults
+  
+  
+  set gr-reproducible? FALSE
+  set gr-rnd-seed 100
+  set gr-width 100
+  set gr-height 100
+  set gr-cell-length-meter 50
+  set gr-road.algorithm "real.shapefile"
+  set gr-road-map-id "jambi1"
+  set gr-total-road-length 1099
+  set gr-min-dist-roads 5
+  set gr-perlin-octaves 10
+  set gr-perlin-persistence 0.8
+  set gr-cone-angle 120
+  set gr-dist-weight 0.6
+  set gr-setup-model "number-of-households"
+  set gr-number-of-households 100
+  set gr-number-of-villages 12
+  set gr-proportion-agricultural-area 0.3
+  set gr-households-per-cell 1
+  set gr-hh-area-distribution "log-normal"
+  set gr-hh-area-mean-ha 1
+  set gr-hh-area-sd-ha 0.92
+  set gr-vlg-area-distribution "uniform"
+  set gr-vlg-area-mean 68.17
+  set gr-vlg-area-sd 56.73
+  set gr-occ-probability 0
+  set gr-hh-distribution "log-normal"
+  set gr-hh-type-mean 0.56
+  set gr-hh-type-sd 0.24
+  set gr-inaccessible-area-location "random"
+  set gr-inaccessible-area-distribution "normal"
+  set gr-inaccessible-area-fraction 0
+  set gr-inaccessible-area-mean 0.5
+  set gr-inaccessible-area-sd 10
+  set gr-field-size-distribution "log-normal"
+  set gr-field-size-mean-ha 0.49
+  set gr-field-size-sd-ha 0.77
+  set gr-s1.homebase TRUE
+  set gr-s2.fields TRUE
+  set gr-s3.nearby TRUE
+  set gr-s4.avoid TRUE
+  set gr-change-strategy 2
+  set gr-set-field-strategies-by-id? false
+  set gr-field-strategies-id 7
+  set gr-land-use-types "household-level-specialization"
+  set gr-LUT-fill-up "LUT-1-fraction"
+  set gr-LUT-0-fraction 0.5
+  set gr-LUT-1-fraction 0.5
+  set gr-LUT-2-fraction 0
+  set gr-LUT-3-fraction 0
+  set gr-LUT-4-fraction 0
+  set gr-LUT-0-specialize 0
+  set gr-LUT-1-specialize 0
+  set gr-LUT-2-specialize 0
+  set gr-LUT-3-specialize 0
+  set gr-LUT-4-specialize 0
+  set gr-default.maps "landuse-type"
+  set gr-write-household-ids "only-first-households"
+  
+end

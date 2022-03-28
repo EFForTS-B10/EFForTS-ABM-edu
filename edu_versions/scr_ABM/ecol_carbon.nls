@@ -1,0 +1,73 @@
+;###################################################################################
+; ╔═╗┌─┐┬─┐┌┐ ┌─┐┌┐┌  ┌─┐┬ ┬┌┐ ┌┬┐┌─┐┌┬┐┌─┐┬  
+; ║  ├─┤├┬┘├┴┐│ ││││  └─┐│ │├┴┐││││ │ ││├┤ │  
+; ╚═╝┴ ┴┴└─└─┘└─┘┘└┘  └─┘└─┘└─┘┴ ┴└─┘─┴┘└─┘┴─┘
+;###################################################################################
+
+To calculate_patch_carbon
+  ;assigns values to patch-carbon
+  ;details on functions are described in the model description
+  
+  ask patches
+  [
+    ;; Calculate carbon for agricultural landuses:
+    if (member? p_landuse LUT-ids)
+    [
+      let carbon_function [l_carbon_function] of a-lut p_landuse
+      set p_carbon (runresult carbon_function p_age)
+    ]
+    
+    ;; Calculate carbon for matrix:
+    if (p_landuse = -100)
+    [
+      set p_carbon  carbon_forest  * patch_size
+    ]
+    
+    ;; Calculate carbon for inacc. areas (use oilpalm carbon function)
+    if (p_landuse = 5)
+    [
+      ;; We use oilpalm carbon for inaccessible areas:
+      let carbon_function [l_carbon_function] of one-of luts with [l_landuse = "oilpalm"]
+      set p_carbon (runresult carbon_function p_age)
+    ]
+  ]  
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To calculate_LUT_carbon
+  ;calculates total carbon for the different LUT for the landscape level by summing up carbon from the cells
+  
+  set carbon []
+  
+  foreach LUT-ids
+  [
+    LUT-id ->
+    
+    let LUT-carbon sum [p_carbon] of patches with [p_landuse = LUT-id]
+    set carbon lput (list (word "LUT-" LUT-id) LUT-carbon) carbon
+  ]
+    
+  ;; Add matrix carbon and inacc carbon:
+  let matrix_carbon sum [p_carbon] of patches with [p_landuse = -100]
+  set carbon lput (list (word "matrix") matrix_carbon) carbon
+  
+  ;; Add inacc carbon and inacc carbon:
+  let inacc_carbon sum [p_carbon] of patches with [p_landuse = 5]
+  set carbon lput (list (word "inacc") inacc_carbon) carbon
+ 
+End
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   
+To calculate-area-under-agriculture
+  ;reports area under agriculture in terms of number of ha
+  ;does not differentiate between smallholder and large plantations
+  let agri-cells count patches with [p_owner != -1]
+  
+  let agri-area agri-cells * patch_size ;convesion from cell into ha
+  
+  set area_under_agriculture agri-area
+End
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

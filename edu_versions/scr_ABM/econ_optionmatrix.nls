@@ -1,0 +1,258 @@
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report make-option-matrix [number-of-fields]
+  ;builds a matrix of all options of change, continue, replant for the number-of-fields fields and writes this matrix on option-matrix
+  ;for now we have two options here: either the full-options matrix ("all-options"), in which all fields of a household can potentially be changed in the same year,
+  ;and the "only-one-field-per-year" option, in which each household can change only one field each year
+  
+  let options 0
+  
+  if land-use-change-decision = "all-options"
+  [
+    set options make-options-matrix-all number-of-fields
+  ]
+  
+  if land-use-change-decision = "only-one-field-per-year"
+  [
+    set options make-options-matrix-one-field number-of-fields
+  ]
+  
+  if land-use-change-decision = "social-options"
+  [
+    set options make-options-matrix-social number-of-fields
+  ]
+ 
+  report options
+  
+End 
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+To-report advance-option-matrix-to-next-year [option-matr]
+  ;changes the option matrix by increasing the age of all fields by 1 year and updating the capital stocks to the new age
+  ;rows of the matrix are: field-id, land use, age, field size, capitalstock 
+  ;reports the changed option matrix
+  
+  ;update patch age 
+  let new-age-of-patches matrix:plus-scalar (matrix:from-row-list(list matrix:get-row option-matr 2)) 1
+  let list-new-age-of-patches matrix:get-row new-age-of-patches 0 ;make this new age into a list 
+  matrix:set-row option-matr 2 list-new-age-of-patches  ;put these ages into the option-matrix
+        
+  ;update capital stock
+  let new-capital-stocks []
+  let counter 0
+  while [counter < length list-new-age-of-patches]
+  [
+    let landuse matrix:get option-matr 1 counter 
+    let age matrix:get option-matr 2 counter
+    let pp-management item landuse h_management
+    let capital-stock (optimal-capitalstock landuse pp-management age)
+    set new-capital-stocks lput  capital-stock new-capital-stocks 
+    set counter counter + 1 
+  ]
+        
+  matrix:set-row option-matr 4 new-capital-stocks
+   
+  report option-matr
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report construct-option-matrix [one-option]
+  ;make a matrix for virtual continuation of landuse. 
+  ;5 rows: field_ids of the household, land use under this option, age, field-size, capital stock
+  ;colums: fields of this hh
+  
+  let number-of-rows 5                         
+  let number-of-cols length h_field_id_list
+  let this-option-matrix matrix:make-constant  number-of-rows number-of-cols 0  
+  let field-id-temp h_field_id_list
+       
+  matrix:set-row this-option-matrix 0 field-id-temp ;row 0: field-ids
+       
+  let field 0
+  while [field < length field-id-temp] ;set landuse, age and field size
+  [ 
+    ;Store patches with p_id = item field field-id-temp locally for faster access:
+    let field-id-patches h_patches with [p_id = item field field-id-temp]
+         
+    ifelse item field one-option = -1 ;stay with the previous land-use
+    [      
+      matrix:set this-option-matrix 1 field [p_landuse] of one-of field-id-patches   ;patches with [p_id = item field field-id-temp] 
+      matrix:set this-option-matrix 2 field [p_age] of one-of field-id-patches       ;patches with [p_id = item field field-id-temp] 
+      matrix:set this-option-matrix 3 field count field-id-patches                   ;patches with [p_id = item field field-id-temp] 
+      matrix:set this-option-matrix 4 field [p_capitalstock_previous] of one-of field-id-patches ;patches with [p_id = item field field-id-temp] 
+    ]
+    [;change to the land-use given in this-option
+      matrix:set this-option-matrix 1 field item field one-option ; change to the new landuse
+      matrix:set this-option-matrix 2 field 0 ;set age to 0
+      matrix:set this-option-matrix 3 field count field-id-patches                     ;patches with [p_id = item field field-id-temp]  ;field size stays the same     
+      matrix:set this-option-matrix 4 field 0 ;capital stock in year 0 is 0; the investment costs go into the capital stock in the next year
+    ]           
+    set field field + 1
+  ] 
+        
+  report this-option-matrix
+  
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report make-options-matrix-all [number-of-fields]
+  ;builds a matrix of all options of change, continue, replant for the number-of-fields fields and writes this matrix on option-matrix
+  
+  ;let number-of-land-uses 4 ;(each field has 4 options: 0-stay with the same land-use, 1: change to oil palm, 2:change to rubber monoculture, 3:change to jungle rubber. If e.g. land-use is oil palm and option is 1, this means that oil palm is replanted)
+  
+  let number-of-land-uses (length LUT-ids) ; + 1)  ;(each field has 3 options: 0-stay with the same land-use, 1: change to oil palm, 2:change to rubber monoculture. If e.g. land-use is oil palm and option is 1, this means that oil palm is replanted)  
+  let number-of-rows number-of-land-uses ^ number-of-fields ;thats the number of existing options if every change is possible
+  let options matrix:make-constant number-of-rows number-of-fields -1
+  let number-of-options number-of-rows
+  
+  let counter 1 ; row 1 is the no change option for all fields, i.e. 0 for each field
+  while [counter < number-of-options]
+  [  
+    let field-place 0
+    while [field-place < number-of-fields]
+    [ 
+      matrix:set options counter field-place ((counter - counter mod ((number-of-land-uses)^ field-place)) / (number-of-land-uses)^ field-place) mod number-of-land-uses
+    
+      set field-place field-place + 1 
+    ]
+   
+   set counter counter + 1 
+  ]
+
+  report options 
+   
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report make-options-matrix-one-field [number-of-fields]
+  ;builds a matrix of all options of change, continue, replant for the number-of-fields fields and writes this matrix on option-matrix
+  ;let number-of-land-uses 4 ;(each field has 4 options: 0-stay with the same land-use, 1: change to oil palm, 2:change to rubber monoculture, 3:change to jungle rubber. If e.g. land-use is oil palm and option is 1, this means that oil palm is replanted)
+  ;only one field can be changed each year, i.e. apart from one field, the option needs to be 0
+  
+  let number-of-land-uses (length LUT-ids) ;3 ;(each field has 3 options: 0-stay with the same land-use, 1: change to oil palm, 2:change to rubber monoculture. If e.g. land-use is oil palm and option is 1, this means that oil palm is replanted) 
+  let number-of-rows (number-of-land-uses * number-of-fields) + 1
+  let options matrix:make-constant number-of-rows number-of-fields -1
+
+  let number-of-options number-of-rows
+  let counter 1 ; row 1 is the no change option for all fields, i.e. 0 for each field
+  
+  let counter-field-position 0
+  
+  while [counter < number-of-options]
+  [  
+    let lu 0
+
+    while [lu < number-of-land-uses]
+    [
+       matrix:set options counter counter-field-position lu 
+       set counter counter + 1
+       set lu lu + 1
+    ]
+    set counter-field-position counter-field-position + 1
+ 
+  ]
+ ; print options
+  report options 
+   
+End 
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report make-options-matrix-social [number-of-fields]
+  ;;; THIS CODE IS ADOPTED FROM THE ALL OPTIONS MATRIX
+  ;; JUST A TEST!!!!!!
+  ; We now create a matrix, considering all options but also the social network
+  ; We check, if there are households in the social netowrk that did convert land recentlxy
+  ; If yes, we allow this conversion, if not we allow it only under a certain probability
+  ; This should increase inertia by a lot!
+ 
+  
+  ;; MAGIC NUMBERS:
+  let timeframe 10
+  let conv_prob n-values length LUT-ids [social-conversion-prob]
+  let options-matrix "one-field" ; "all"
+  
+  ;; Generate the options matrix for one field per year -- could be expanded to all options
+  let options ifelse-value (options-matrix = "one-field") [make-options-matrix-one-field number-of-fields][make-options-matrix-all number-of-fields]
+  
+  ; Now check, which conversion is allowed:
+  let t0 ticks - timeframe
+  if (t0 < 0) [set t0 0]
+  let t1 ticks
+  
+  ;; Get the land-use change logs of connected households
+  let luc_logs [h_land-use-change] of h_connected_hhs
+  let luc_logs_summary log-land-use-change-summary luc_logs t0 t1
+  
+  ;Filter options:
+  let remaining-options []
+  let n-rows item 0 matrix:dimensions options
+  let i 0
+  
+  ;; Rows represent options, so we check each row
+  while [i < n-rows]
+  [
+    let current-row matrix:get-row options i
+    
+    ;; Go trough fields:
+    let j 0
+    let n-fields length current-row
+    let social-yes 1
+    let social-no 1
+    
+    while [j < n-fields]
+    [
+      let current-field-id item j h_field_id_list
+      ;let current-landuse [p_landuse] of one-of h_patches with [p_id = current-field-id]
+      let planned-landuse item j current-row
+      
+      ;; Only check for real land conversion not for -1:
+      if (planned-landuse != -1)
+      [
+        ;; Check if connected hhs have done this:
+        ifelse (item planned-landuse luc_logs_summary > 0)
+        [set social-yes (social-yes + 1)]
+        [     
+          ;; Or if the probability matches keep this option
+          ifelse (random-float 1 < item planned-landuse conv_prob)
+          [set social-yes (social-yes + 1)]
+          [set social-no (social-no + 1)]
+        ]
+      ]   
+      ;; Increase field counter of this option
+      set j (j + 1)
+    ]
+    
+    ;; First check if the option had only -1, if yes, add it to remaining options
+    ifelse (length (filter [? -> ? != -1] current-row) = 0)
+    [
+      set remaining-options lput current-row remaining-options
+    ]
+    [
+      ;; If not check the social index:
+      ;; Calculate social index of this option:
+      let social-index (social-yes / social-no)
+      if (social-index >= 1) [set remaining-options lput current-row remaining-options]
+    ]
+    
+    set i (i + 1)
+     
+  ]
+  
+  set options matrix:from-row-list remaining-options
+  
+;  print "options"
+;  print matrix:pretty-print-text options
+  report options 
+    
+  
+  
+end
+
+

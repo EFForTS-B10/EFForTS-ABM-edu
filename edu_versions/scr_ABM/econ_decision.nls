@@ -1,0 +1,317 @@
+
+;###################################################################################
+; DECISION ON LAND-USE CHANGE AND FACTOR INPUTS
+;###################################################################################
+
+To perform-lu-and-production-decision
+  ;determines and implements land-use change and production decision for all households in one year
+  ;make land use change decision and factor input decision (based on actual household wealth)
+  ;store new land use and factor input in all patches  
+  ;calculate for all options (permutations of changes: do we want the switch back from oil palm to rubber as well?)
+  ;first version, allow only one change per time
+  ;select from all options those that are potentially affordable, i.e. h_capital (after consumption) >= investment costs + sum(recurrent costs of kabital and land) + Wmin
+  ;from all potentially affordable options select the most profitable one
+  
+  ask hhs
+  [ 
+    if h_area > 0
+    [ 
+      set h_wealth_previous h_wealth
+      let number-of-fields length h_field_id_list
+    
+      let all-options-matrix make-option-matrix number-of-fields ;makes a matrix with all possible options 0 stands for staying with the same landuse in this field, 1 change to oil palm, 2 change to rubber...
+      
+      let affordable-options determine-affordable-options all-options-matrix ;affordable options is a list were every entry contains the land-uses of the different patches under this option
+                                                                             ;if no option is affordable no land-use change occurs. This is likely also the least cost option, as land-use change always involvles high investment costs in the beginning
+   
+    
+      
+      ifelse affordable-options = [] ;no option is affordable
+      [
+        
+        ;select option with no land use change
+        ;apply this, i.e. calculate factor inputs etc 
+        let choosen-option matrix:get-row all-options-matrix 0
+      
+        set h_netcashflow_exp "na"
+             
+        apply-landuse-and-production-decision-one-hh choosen-option
+      ]
+      [ 
+        ;go through all affordable options and calculate the expected net cash flow
+        let expected-net-cashflows [] ;list of expected net cashflows from the different affordable options   
+        let option 0
+        while [option < length affordable-options]
+        [  
+          let this-option item option affordable-options ;list containing one of the affordable options 
+          let this-option-matrix construct-option-matrix this-option ;constructs a matrix containing the rows: field-ids, land uses, age, field size, capital stock
+          let accumulated-expected-cashflow-this-option calculate-accumulated-expected-cashflow this-option-matrix ;start with the actual h_wealth
+          
+        ;  print (word "who " who " cashflow: " accumulated-expected-cashflow-this-option " option " this-option)
+          
+          set expected-net-cashflows lput accumulated-expected-cashflow-this-option expected-net-cashflows ; store the accumulated discounted cash flow for later comparison between options  
+          set option option + 1
+        ]
+     
+        ;select the option with the maximum expected cashflow and implement it; i.e. now for change the real patch attributes
+        let max-expected-cashflow max expected-net-cashflows
+        let position-of-max-expected-cashflow position max-expected-cashflow expected-net-cashflows
+    
+        let choosen-option item position-of-max-expected-cashflow affordable-options 
+      
+       ; print (word " chosen " choosen-option)
+        
+        ;; store the expected predicted netcashflow in a turtle variable:
+        set h_netcashflow_exp max-expected-cashflow
+        
+      
+        apply-landuse-and-production-decision-one-hh choosen-option
+        
+       ; print (word "My cashflow before: " h_netcashflow_exp " and after: " h_netcashflow)
+        
+      ] ;ifelse affordable-options = [] ;no option is affordable
+    ] ; if h_area > 0
+    
+  ] 
+  
+End  
+
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 
+To-report determine-affordable-options [all-options-matrix]
+  ;reports a list of all options that are affordable for the household; each list entry is one option
+  ;takes as input matrix of all permutations of potential land-uses of the household fields
+  ;calculates the investment cost for all options
+  ;affordable are those options for which the household wealth after reduction of planned consumption is bigger than investment costs
+ 
+  let affordable-options []
+  let field-id-temp h_field_id_list   ;field ids of the household are needed to determine the actual landuse in the cells, i.e. what the numbers in option_matrix_temp actually mean.
+  
+  ;calculate investment costs for all these options and compare to actual wealth
+  let dim matrix:dimensions all-options-matrix
+  let number-of-options item 0 dim
+
+  let list-of-investment-costs []
+  
+  let counter 0
+  while [counter < number-of-options] ;calculated investment costs of all options
+  [ 
+    let option matrix:get-row all-options-matrix counter
+    let inv-cost investment-costs-of-one-option-cummulative-3-years h_id option ;calculate investment costs of this option 
+    set list-of-investment-costs lput inv-cost list-of-investment-costs ;and put investment costs in a list 
+    set counter counter + 1 
+  ]
+  
+  ;which of these options are affordable?
+  
+  ;reduce fix consumption from household wealth
+  let wealth-temp h_wealth
+  let planned-consumption-this-year calculate-fix-consumption-household wealth-temp
+  set wealth-temp wealth-temp - planned-consumption-this-year
+   
+  set affordable-options []
+  
+  set counter 0
+  while [counter < number-of-options]
+  [
+    if item counter list-of-investment-costs < wealth-temp + min-wealth ;option is affordable
+    [
+      set affordable-options lput (matrix:get-row all-options-matrix counter) affordable-options
+    ]
+    set counter counter + 1
+  ]
+  
+  report affordable-options
+End
+
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To apply-landuse-and-production-decision-one-hh [one-option]
+  ;applies land use and prodution decision in the sense that the land use of the patches is changed
+  ;if a land-use change occured, patch age is set to zero
+  ;stores factor inputs of this year in the respective patch variables, as they are needed later in this year loop to calculate the yield and household income based on the new prices
+
+  let this-option-matrix construct-option-matrix one-option ;creates option matrix: rows: field-id, land-use under this option, field age, field size, capital stock of cells
+  
+  let wealth h_wealth ;start with h_wealth and change it to the new h_wealth in the end of this function
+  let debts-this-year 0
+  
+  ;substract fix consumption and take up new debts if necessary
+  let remove-consumption substract-fix-consumption-household wealth debts-this-year
+  set wealth item 0 remove-consumption
+  set debts-this-year item 1 remove-consumption
+  let fix-consumption item 2 remove-consumption
+
+  ;substract unavoidable costs for investment, capital and land     
+  let unavoidable-costs calculate-unavoidable-costs-household this-option-matrix        
+  let remove-unavoidable-costs  substract-unavoidable-costs-household wealth debts-this-year unavoidable-costs
+  set wealth item 0 remove-unavoidable-costs
+  set debts-this-year item 1 remove-unavoidable-costs
+
+  let factor-inputs determine-factor-inputs-for-one-option this-option-matrix wealth ;reports matrix with rows: field-id, labor input per cell, tinput per cell 
+  let variable-factor-costs calculate-variable-factor-costs-household this-option-matrix factor-inputs
+  
+  set wealth wealth - variable-factor-costs ;substract factor costs from wealth
+  if round wealth = 0 [ set wealth 0] ; there might be rounding issues  
+ 
+  if wealth < 0 
+  [
+    print "wealth"
+    print wealth
+    print "ERROR, this is not supposed to happen"
+  ]
+    
+   update-patch-and-household-variables wealth this-option-matrix factor-inputs fix-consumption debts-this-year
+      
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To update-patch-and-household-variables [wealth this-option-matrix factor-inputs fixconsumption debts]
+  ;go through all fields and if there is a change according to the chosen option, change the respective patch attributes,
+  ;i.e.override patch land-uses, age and capital stock with the values in the option-matrix 
+  let number-of-fields length h_field_id_list
+  let counter 0
+  
+  let converted-to-oilpalm 0
+  let converted-to-rubber 0
+  
+  ;upadate patch variables
+  while [counter < number-of-fields]
+  [
+    ;print "this-option-matrix"
+    ;print this-option-matrix
+    
+    let patch-id matrix:get this-option-matrix 0 counter   ;field-id 
+       
+    let luc_or_replant FALSE
+    
+    ;; Update patch variables of all field patches:
+    ask h_patches with [p_id = patch-id]
+    [
+      set p_landuse_previous p_landuse
+      set p_landuse  matrix:get this-option-matrix 1 counter
+      set p_management item p_landuse [h_management] of myself
+      let p_ineff item p_landuse [h_inefficiencies] of myself
+      let age matrix:get this-option-matrix 2 counter ;was outcommented
+      
+      let capitalstock matrix:get this-option-matrix 4 counter
+          
+      ;print (word "lu " p_landuse " man " p_management " ineff " p_ineff " age " age " cpstock " capitalstock)
+      set p_labor matrix:get factor-inputs 1 counter
+      set p_tinput matrix:get factor-inputs 2 counter
+        
+      set p_production calculate_actual_production_cell p_landuse p_management p_ineff age p_labor p_tinput capitalstock
+      
+      ;;Store the production values for output:
+      set p_actual_production p_production
+      set p_optimal_production calculate_leontief_production_cell p_landuse p_management age p_labor p_tinput capitalstock
+      
+      
+      ;set p_invest optimal-investment-costs-cell p_landuse p_age ;This is to enable updating capital stocks in the beginning of each year. 
+      
+       ;and now change patch age, i.e. advance patch age, if no land-use change, for replanting and land-use change set age 0
+      ifelse p_age = 0 
+      [
+       if p_landuse = matrix:get this-option-matrix 1 counter [set p_age  p_age + 1] ;staying
+       if p_landuse != matrix:get this-option-matrix 1 counter [set p_age 0 set luc_or_replant TRUE] ;land-use change (likely does not occur in this stage)
+       set p_capitalstock_previous 0
+      ]
+      [
+       if p_landuse = matrix:get this-option-matrix 1 counter and matrix:get this-option-matrix 2 counter = 0 [set p_age 0 set p_capitalstock_previous 0 set luc_or_replant TRUE] ;replanting
+       if p_landuse = matrix:get this-option-matrix 1 counter and matrix:get this-option-matrix 2 counter != 0 [set p_age p_age + 1] ;continue
+       if p_landuse != matrix:get this-option-matrix 1 counter and matrix:get this-option-matrix 2 counter = 0 [set p_age 0 set p_capitalstock_previous 0 set luc_or_replant TRUE] ;land-use change
+      ]
+      
+      set p_invest optimal-invest p_landuse p_management p_age ;This is to enable updating capital stocks in the beginning of each year. 
+      
+      if p_age = 0 [set p_capitalstock 0]  
+    ]
+    
+    ;; Log land-use-change decision:
+    if (luc_or_replant = TRUE)
+    [
+      let representative one-of h_patches with [p_id = patch-id]
+      set h_land-use-change log-land-use-change h_land-use-change ([p_landuse_previous] of representative) ([p_landuse] of representative)
+    ]
+ 
+    
+    set counter counter + 1   
+  ]
+  
+  ;update household variables
+  ;calculate costs for factor inputs 
+  let labor-cost-household 0
+  let tinput-cost-household 0  
+  
+  set counter 0
+  while [counter < number-of-fields] ;ToDo can potentially be combined with above while-loop 
+  [
+    let patch-id matrix:get this-option-matrix 0 counter   ;field-id 
+    ask one-of h_patches with [p_id = patch-id]
+    [
+      let labor p_labor
+      let tinput p_tinput
+      let fieldsize p_fieldsize
+      let landuse p_landuse
+      
+      let labor-cost-cell (item p_management [l_mng_wages] of a-lut landuse) * labor 
+      let tinput-cost-cell (item p_management [l_mng_price_tinput] of a-lut landuse) * tinput 
+      
+      
+      let labor-cost-field labor-cost-cell * fieldsize
+      let tinput-cost-field tinput-cost-cell * fieldsize
+      
+      set labor-cost-household labor-cost-household + labor-cost-field
+      set tinput-cost-household tinput-cost-household + tinput-cost-field       
+    ]     
+    set counter counter + 1    
+  ]
+  
+  set h_cost_labor labor-cost-household
+  set h_cost_tinput tinput-cost-household
+  set h_cost_capital calculate-household-capital-costs this-option-matrix
+  set h_cost_land calculate-household-land-costs
+  set h_cost_investment investment-costs-of-one-option this-option-matrix
+  set h_production calculate-household-production
+  ;labor and tinput costs are already substracted from wealth in apply-landuse-and-production-decision-one-hh
+  
+
+  ;calculated and set net cashflow in this year
+  set h_netcashflow calculate-net-cash-flow-household this-option-matrix factor-inputs
+  
+  ;substract variable consumption of this household, the fix consumption was already substracted earlier
+  let var-consumption calculate-variable-consumption-household h_netcashflow
+  set h_fixconsumption fixconsumption
+  set h_consumption fixconsumption + var-consumption
+  set h_varconsumption var-consumption
+
+  if h_varconsumption < 0
+  [print "ERROR negative variable consumption"]
+ 
+  set h_revenue calculate-household-revenue this-option-matrix factor-inputs
+  
+  ;wealth now is wealth after fix consumption, after substraction of unavoidable costs (costs for land, capital and investment) and costs for labor and tinput
+  set wealth wealth - var-consumption + h_revenue + h_exincome
+  
+  ;sum up new debts with debts from previous years
+  let total-debts h_debts + debts
+  
+  let transfer payback-debts wealth total-debts
+  set wealth item 0 transfer
+  set total-debts item 1 transfer
+   
+  set h_wealth wealth
+  set h_debts total-debts
+  if h_debts > 0 
+  [
+   set h_debt_years h_debt_years + 1 
+  ]
+ 
+  set h_capitalstock calculate-household-capitalstock 
+    
+End  

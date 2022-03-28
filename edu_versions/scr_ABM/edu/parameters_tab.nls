@@ -1,0 +1,1758 @@
+;###################################################################################
+; ╔═╗┌─┐┬─┐┌─┐┌┬┐┌─┐┌┬┐┌─┐┬─┐  ╦┌┐┌┌┬┐┌─┐┬─┐┌─┐┌─┐┌─┐┌─┐
+; ╠═╝├─┤├┬┘├─┤│││├┤  │ ├┤ ├┬┘  ║│││ │ ├┤ ├┬┘├┤ ├─┤│  ├┤ 
+; ╩  ┴ ┴┴└─┴ ┴┴ ┴└─┘ ┴ └─┘┴└─  ╩┘└┘ ┴ └─┘┴└─└  ┴ ┴└─┘└─┘
+;###################################################################################
+extensions[xw]
+; using NetLogo 6.0.0 or later, the xw-extension ("extra widgets")
+; needs to be downloaded and saved in the extensions/ folder (https://github.com/CRESS-Surrey/eXtraWidgets)
+; using NetLogo 6.2.0 or later there might be some issues with this extension...
+
+globals[ 
+  xw:current-x 
+  xw:current-y
+  xw:current-color
+  xw:color-for-widgets-linked-with-interface
+  xw:standard-width 
+  
+  ; Parameters from the parameter tab:
+  ; ABM Parameters
+  reproducible?
+  rnd-seed
+  write-maps?
+  write-hh-data-to-file?
+  export-view?
+  show-homebases?
+  show-roads?
+  which-map
+  land-use-change-decision
+  social-conversion-prob
+  price_scenario
+  sim-time
+  price-fluctuation-percent
+  historical_smoothing
+  heterogeneous-hhs?
+  learning-spillover?
+  setup-hh-network
+  hh-nw-param1
+  hh-nw-param2
+  spillover-share
+  consumption-on?
+  consumption_base
+  consumption_frac_cash
+  consumption_frac_wealth
+  h_debt_years_max_bankrupt
+  land_price
+  external_income
+  rent_rate_capital_lend
+  rent_rate_capital_borrow
+  rent_rate_land
+  initial-wealth-distribution
+  init-wealth-correction-factor
+  wealth-constant
+  wealth-log-mean
+  wealth-log-sd
+  min-wealth
+  time-horizon
+  discount-rate 
+  
+  LUT-0-folder
+  LUT-0-color
+  LUT-0-price
+  LUT-0-price-sd
+
+  LUT-1-folder
+  LUT-1-color
+  LUT-1-price
+  LUT-1-price-sd
+
+  LUT-2-folder
+  LUT-2-color
+  LUT-2-price
+  LUT-2-price-sd
+
+  LUT-3-folder
+  LUT-3-color
+  LUT-3-price
+  LUT-3-price-sd
+
+  LUT-4-folder
+  LUT-4-color
+  LUT-4-price
+  LUT-4-price-sd
+
+  matrix-color
+  road-color
+  inacc-color
+  hh-color
+  links-color
+  
+  idrunnum ; actually a variable..
+  
+  
+  ;; LGraf parameters
+  gr-reproducible?
+  gr-rnd-seed
+  gr-width
+  gr-height
+  gr-cell-length-meter
+  
+  gr-road.algorithm
+  gr-road-map-id
+  gr-total-road-length
+  gr-min-dist-roads
+  gr-perlin-octaves
+  gr-perlin-persistence
+  gr-cone-angle
+  gr-dist-weight
+  gr-households-per-cell
+
+  gr-setup-model
+  gr-number-of-households
+  gr-number-of-villages
+  gr-proportion-agricultural-area
+
+  gr-hh-area-distribution
+  gr-hh-area-mean-ha
+  gr-hh-area-sd-ha
+  
+  gr-vlg-area-distribution
+  gr-vlg-area-mean
+  gr-vlg-area-sd
+
+  gr-occ-probability
+  gr-hh-distribution
+  gr-hh-type-mean
+  gr-hh-type-sd
+  
+  gr-inaccessible-area-location
+  gr-inaccessible-area-distribution
+  gr-inaccessible-area-fraction
+  gr-inaccessible-area-mean
+  gr-inaccessible-area-sd
+  
+  gr-field-size-distribution
+  gr-field-size-mean-ha
+  gr-field-size-sd-ha
+  gr-s1.homebase
+  gr-s2.fields
+  gr-s3.nearby
+  gr-s4.avoid
+  gr-change-strategy
+  gr-set-field-strategies-by-id?
+  gr-field-strategies-id
+  
+  gr-land-use-types
+  gr-LUT-fill-up
+  gr-LUT-0-fraction
+  gr-LUT-1-fraction
+  gr-LUT-2-fraction
+  gr-LUT-3-fraction
+  gr-LUT-4-fraction
+  gr-LUT-0-specialize
+  gr-LUT-1-specialize
+  gr-LUT-2-specialize
+  gr-LUT-3-specialize
+  gr-LUT-4-specialize 
+  gr-default.maps
+  gr-write-household-ids
+
+]
+
+  
+to load-globals-from-parameters-tab
+  ;; ABM parameters
+  set reproducible? xw:get "reproducible?"
+  set rnd-seed xw:get "rnd-seed"
+  set write-maps? xw:get "write-maps?"
+  set write-hh-data-to-file? xw:get "write-hh-data-to-file?"
+  set export-view? xw:get "export-view?"
+  set show-homebases? xw:get "show-homebases?"
+  set show-roads? xw:get "show-roads?"
+  set which-map xw:get "which-map"
+  set land-use-change-decision xw:get "land-use-change-decision"
+  set social-conversion-prob xw:get "social-conversion-prob"
+  set price_scenario xw:get "price_scenario"
+  set sim-time xw:get "sim-time"
+  set price-fluctuation-percent xw:get "price-fluctuation-percent"
+  set historical_smoothing xw:get "historical_smoothing"
+  set heterogeneous-hhs? xw:get "heterogeneous-hhs?"
+  set learning-spillover? xw:get "learning-spillover?"
+  set setup-hh-network xw:get "setup-hh-network"
+  set hh-nw-param1 xw:get "hh-nw-param1"
+  set hh-nw-param2 xw:get "hh-nw-param2"
+  set spillover-share xw:get "spillover-share"
+  set consumption-on? xw:get "consumption-on?"
+  set consumption_base xw:get "consumption_base"
+  set consumption_frac_cash xw:get "consumption_frac_cash"
+  set consumption_frac_wealth xw:get "consumption_frac_wealth"
+  set h_debt_years_max_bankrupt xw:get "h_debt_years_max_bankrupt"
+  set land_price xw:get "land_price"
+  set external_income xw:get "external_income"
+  set rent_rate_capital_lend xw:get "rent_rate_capital_lend"
+  set rent_rate_capital_borrow xw:get "rent_rate_capital_borrow"
+  set rent_rate_land xw:get "rent_rate_land"
+  set initial-wealth-distribution xw:get "initial-wealth-distribution"
+  set init-wealth-correction-factor xw:get "init-wealth-correction-factor"
+  set wealth-constant xw:get "wealth-constant"
+  set wealth-log-mean xw:get "wealth-log-mean"
+  set wealth-log-sd xw:get "wealth-log-sd"
+  set min-wealth xw:get "min-wealth"
+  set time-horizon xw:get "time-horizon"
+  set discount-rate xw:get "discount-rate"
+  
+  set LUT-0-folder xw:get "LUT-0-folder" 
+  set LUT-0-color xw:get "LUT-0-color"
+  set LUT-0-price xw:get "LUT-0-price"
+  set LUT-0-price-sd xw:get "LUT-0-price-sd"
+  
+  set LUT-1-folder xw:get "LUT-1-folder" 
+  set LUT-1-color xw:get "LUT-1-color"
+  set LUT-1-price xw:get "LUT-1-price"
+  set LUT-1-price-sd xw:get "LUT-1-price-sd"
+  
+  set LUT-2-folder xw:get "LUT-2-folder" 
+  set LUT-2-color xw:get "LUT-2-color"
+  set LUT-2-price xw:get "LUT-2-price"
+  set LUT-2-price-sd xw:get "LUT-2-price-sd"
+  
+  set LUT-3-folder xw:get "LUT-3-folder" 
+  set LUT-3-color xw:get "LUT-3-color"
+  set LUT-3-price xw:get "LUT-3-price"
+  set LUT-3-price-sd xw:get "LUT-3-price-sd"
+  
+  set LUT-4-folder xw:get "LUT-4-folder" 
+  set LUT-4-color xw:get "LUT-4-color"
+  set LUT-4-price xw:get "LUT-4-price"
+  set LUT-4-price-sd xw:get "LUT-4-price-sd"
+ 
+  set matrix-color xw:get "matrix-color"
+  set road-color xw:get "road-color"
+  set inacc-color xw:get "inacc-color"
+  set hh-color xw:get "hh-color"
+  set links-color xw:get "links-color"
+  
+  ;; LGraf parameters
+  set gr-reproducible? xw:get "gr-reproducible?" 
+  set gr-rnd-seed xw:get "gr-rnd-seed"
+  set gr-width xw:get "gr-width"
+  set gr-height xw:get "gr-height"
+  set gr-cell-length-meter xw:get "gr-cell-length-meter"
+  
+  set gr-road.algorithm xw:get "gr-road.algorithm"
+  set gr-road-map-id xw:get "gr-road-map-id"
+  set gr-total-road-length xw:get "gr-total-road-length"
+  set gr-min-dist-roads xw:get "gr-min-dist-roads"
+  set gr-perlin-octaves xw:get "gr-perlin-octaves"
+  set gr-perlin-persistence xw:get "gr-perlin-persistence"
+  set gr-cone-angle xw:get "gr-cone-angle"
+  set gr-dist-weight xw:get "gr-dist-weight"
+  set gr-households-per-cell xw:get "gr-households-per-cell"
+
+  set gr-setup-model xw:get "gr-setup-model"
+  set gr-number-of-households xw:get "gr-number-of-households"
+  set gr-number-of-villages xw:get "gr-number-of-villages"
+  set gr-proportion-agricultural-area xw:get "gr-proportion-agricultural-area"
+
+  set gr-hh-area-distribution xw:get "gr-hh-area-distribution"
+  set gr-hh-area-mean-ha xw:get "gr-hh-area-mean-ha"
+  set gr-hh-area-sd-ha xw:get "gr-hh-area-sd-ha"
+  
+  set gr-vlg-area-distribution xw:get "gr-vlg-area-distribution"
+  set gr-vlg-area-mean xw:get "gr-vlg-area-mean"
+  set gr-vlg-area-sd xw:get "gr-vlg-area-sd"
+
+  set gr-occ-probability xw:get "gr-occ-probability"
+  set gr-hh-distribution xw:get "gr-hh-distribution"
+  set gr-hh-type-mean xw:get "gr-hh-type-mean"
+  set gr-hh-type-sd xw:get "gr-hh-type-sd"
+  
+  set gr-inaccessible-area-location xw:get "gr-inaccessible-area-location"
+  set gr-inaccessible-area-distribution xw:get "gr-inaccessible-area-distribution"
+  set gr-inaccessible-area-fraction xw:get "gr-inaccessible-area-fraction"
+  set gr-inaccessible-area-mean xw:get "gr-inaccessible-area-mean"
+  set gr-inaccessible-area-sd xw:get "gr-inaccessible-area-sd"
+  
+  set gr-field-size-distribution xw:get "gr-field-size-distribution"
+  set gr-field-size-mean-ha xw:get "gr-field-size-mean-ha"
+  set gr-field-size-sd-ha xw:get "gr-field-size-sd-ha"
+  set gr-s1.homebase xw:get "gr-s1.homebase"
+  set gr-s2.fields xw:get "gr-s2.fields"
+  set gr-s3.nearby xw:get "gr-s3.nearby"
+  set gr-s4.avoid xw:get "gr-s4.avoid"
+  set gr-change-strategy xw:get "gr-change-strategy"
+  set gr-set-field-strategies-by-id? xw:get "gr-set-field-strategies-by-id?"
+  set gr-field-strategies-id xw:get "gr-field-strategies-id"
+  
+  set gr-land-use-types xw:get "gr-land-use-types"
+  set gr-LUT-fill-up xw:get "gr-LUT-fill-up"
+  set gr-LUT-0-fraction xw:get "gr-LUT-0-fraction"
+  set gr-LUT-1-fraction xw:get "gr-LUT-1-fraction"
+  set gr-LUT-2-fraction xw:get "gr-LUT-2-fraction"
+  set gr-LUT-3-fraction xw:get "gr-LUT-3-fraction"
+  set gr-LUT-4-fraction xw:get "gr-LUT-4-fraction"
+  set gr-LUT-0-specialize xw:get "gr-LUT-0-specialize"
+  set gr-LUT-1-specialize xw:get "gr-LUT-1-specialize"
+  set gr-LUT-2-specialize xw:get "gr-LUT-2-specialize"
+  set gr-LUT-3-specialize xw:get "gr-LUT-3-specialize"
+  set gr-LUT-4-specialize xw:get "gr-LUT-4-specialize"
+  set gr-default.maps xw:get "gr-default.maps"
+  set gr-write-household-ids xw:get "gr-write-household-ids"
+
+end
+
+
+;###################################################################
+; Start up procedure
+; (will be executed automatically when model is opened)
+;###################################################################
+
+to startup
+  xw:clear-all ; remove all previous extra tabs and widgets, if any
+  create-extra-tab "t1" "Parameters"
+  add-parameter-widgets
+
+end
+
+;######################################################################
+; Create extra tab for parameters
+;######################################################################
+
+to create-extra-tab [tab-id tab-title]
+  xw:create-tab tab-id 
+  [ 
+    xw:set-title tab-title
+  ] 
+  ; inital positioning
+  set xw:current-x 10
+  set xw:current-y 10
+  set xw:color-for-widgets-linked-with-interface 79.5
+  set xw:standard-width 250
+end
+
+
+;#####################################################################
+; Add parameter widgets
+;######################################################################
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+; Helper functions:
+to xw:adjust-position  
+  xw:set-x xw:current-x 
+  xw:set-y xw:current-y
+  xw:set-width 200
+  
+  set xw:current-y (xw:current-y + xw:height)
+  
+  if (xw:current-y >= 2000)
+  [
+    xw:create-new-column
+  ]
+end
+
+to xw:create-new-column 
+  set xw:current-x (xw:current-x + xw:standard-width)
+  set xw:current-y 10
+end
+
+
+
+to xw:show-colors 
+  foreach [0 1 2 3 4]
+  [ 
+    i ->
+      ;set xw:current-color (item 0 [xw:value] xw:of xw:widgets xw:with [xw:key = (word "LUT-" i "-color")])
+      xw:ask (word "LUT-" i "-color") [set xw:current-color xw:value] ; simpler than code line above
+      xw:ask xw:widgets xw:with [length xw:key > 4 AND substring xw:key 0 5 = (word "LUT-" i)] 
+      [adapt-color]  
+  ]
+ 
+  foreach ["matrix-color" "road-color" "inacc-color" "hh-color" "links-color"]
+  [key ->
+    xw:ask key [
+      set xw:current-color xw:value
+      adapt-color
+    ]
+  ]
+end
+
+to adapt-color
+  xw:set-color xw:current-color
+  xw:set-opaque? TRUE
+  ifelse (xw:current-color mod 10 < 4)
+  [
+    xw:set-font-color 5.5 ; grey
+  ][
+    xw:set-font-color 0 ; black
+  ]   
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to add-parameter-widgets
+  
+  xw:create-note "heading" 
+  [
+    xw:set-font-size 30
+    xw:set-font-color green
+    xw:set-text "Parameters:"
+    xw:adjust-position
+    xw:adjust-position
+  ]
+  
+  xw:create-button "reset-parameters" 
+  [
+    xw:set-label "Set parameters to default!"
+    xw:set-commands "reset-parameters"
+    xw:adjust-position
+    xw:adjust-position
+  ]
+  
+  xw:create-button "overwrite-interface-tab" 
+  [
+    xw:set-label "Overwrite Interface tab!" ; with values from Parameters tab
+    xw:set-commands "NoS-overwrite-interface-tab"
+    xw:adjust-position
+  ]
+  
+  xw:create-button "show-colors" 
+  [
+    xw:set-label "Show (updated) colors!"
+    xw:set-commands "xw:show-colors"
+    xw:adjust-position
+  ]
+  
+ ;------------------------------------------------------------------------------------
+ ;----------------------------------------------------
+ ; ABM: parameters 
+ ;----------------------------------------------------
+ ;------------------------------------------------------------------------------------
+    
+  ;-----------------------------------------
+  ; ABM: Output parameters
+  ;-----------------------------------------
+  xw:create-note "output"
+  [
+    xw:set-text "ABM: Output"
+    xw:set-font-size 17
+    xw:adjust-position
+    xw:adjust-position ; run twice for more space
+  ]
+  
+  xw:create-checkbox "reproducible?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "rnd-seed"
+  [
+    xw:set-label xw:key
+    xw:set-value 1234
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "write-maps?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? FALSE
+    xw:adjust-position
+  ]
+  
+   xw:create-checkbox "write-hh-data-to-file?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? FALSE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "export-view?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? FALSE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "show-homebases?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? FALSE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "show-roads?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  ;----------------------------------------------------
+  ; ABM: Map and land use parameters
+  ;----------------------------------------------------
+  
+  xw:create-note "map-land-use"
+  [
+    xw:set-text "ABM: Map & Land Use"
+    xw:set-font-size 17
+    xw:adjust-position
+    xw:adjust-position ; run twice for some extra space
+  ]
+  
+  xw:create-chooser "which-map"  ; TODO: fix errors
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "one-farmer-one-field" 
+     ;"one-farmer"                         ; runtime error
+     ;"five-farmers"                       ; runtime error
+      "five-farmers2" 
+      "five-farmers3"
+     ;"ten-farmers"                        ; runtime error
+      "ten-farmers2" 
+     ;"twenty-farmers"                     ; runtime error
+     ;"twenty-farmers2"                    ; runtime error
+     ;"thirty-farmers2"                    ; runtime error
+     ;"fifty-farmers"                      ; runtime error
+     ;"fifty-farmers2"                     ; runtime error
+     ;"fifty-farmers4"                     ; runtime error
+      "fifty-farmers5" 
+     ;"hundred-farmers"                    ; runtime error
+      "hundred-farmers2" 
+      "hundred-farmers3" 
+     ;"twohundred-farmers"                 ; runtime error
+     ;"twohundred-farmers-big-plantations" ; runtime error
+     ;"fourhundred-farmers"                ; runtime error
+      "landmarkets1" ; takes long!
+      "landmarkets2" ; takes long!
+     ;"EFForTS-LGraf"                      ; internal error
+    ]
+    xw:set-selected-item "hundred-farmers3"
+    xw:adjust-position
+  ]
+    
+  xw:create-chooser "land-use-change-decision"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "only-one-field-per-year"
+      "all-options"
+      "social-options"
+    ]
+    xw:set-selected-item "only-one-field-per-year"
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "social-conversion-prob"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.1
+    xw:adjust-position
+  ]
+
+
+ ;----------------------------------------------------
+ ; ABM: Price parameters
+ ;----------------------------------------------------
+  xw:create-note "price"
+  [
+    xw:set-text "ABM: Price"
+    xw:set-font-size 17
+    xw:create-new-column
+    xw:adjust-position ; run twice for some extra space
+  ]
+  
+  xw:create-chooser "price_scenario"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "constant_prices"
+      "variable_prices"
+      "correlated_prices_1"
+      "random_walk"
+      "historical_trends"
+      "production-related"
+      "price_shock"
+    ]
+   xw:set-selected-item "constant_prices"
+   xw:adjust-position
+  ]
+  
+  xw:create-slider "sim-time"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 100
+    xw:set-increment 1
+    xw:set-value 50
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "price-fluctuation-percent"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 100
+    xw:set-increment 1
+    xw:set-value 10
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "historical_smoothing"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 50
+    xw:set-increment 1
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  
+ ;----------------------------------------------------
+ ; ABM: Inefficiency & Learning
+ ;----------------------------------------------------
+  xw:create-note "inefficiency-learning"
+  [
+    xw:set-text "ABM: Inefficiency & Learning"
+    xw:set-font-size 17
+    xw:adjust-position
+    xw:adjust-position ; run twice for some extra space
+  ]
+  
+  xw:create-checkbox "heterogeneous-hhs?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "learning-spillover?" 
+  [
+    xw:set-label "learning-spillover?, Interface linked"
+    xw:set-selected? TRUE; = learning ; linked with Interface switch, default: TRUE
+    xw:set-color xw:color-for-widgets-linked-with-interface
+    xw:adjust-position
+  ]
+  
+  xw:create-chooser "setup-hh-network"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "hh-nw-none"
+      "hh-nw-kernel"
+      "hh-nw-kernel-distance"
+      "hh-nw-n-nearest-neighbors"
+      "hh-nw-distance"
+    ]
+   xw:set-selected-item "hh-nw-kernel-distance"
+   xw:adjust-position
+  ]
+  
+  xw:create-slider "hh-nw-param1"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 100
+    xw:set-increment 1
+    xw:set-value 10
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "hh-nw-param2"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 100
+    xw:set-increment 1
+    xw:set-value 50
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "spillover-share"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 1
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; ABM: Consumption
+ ;----------------------------------------------------
+  xw:create-note "consumption"
+  [
+    xw:set-text "ABM: Consumption"
+    xw:set-font-size 17
+    xw:adjust-position
+    xw:adjust-position ; run twice for some extra space
+  ] 
+  
+  xw:create-checkbox "consumption-on?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "consumption_base"
+  [
+    xw:set-label xw:key
+    xw:set-value 1000
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "consumption_frac_cash"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.1
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "consumption_frac_wealth"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.05
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "h_debt_years_max_bankrupt"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 10
+    xw:set-increment 1
+    xw:set-value 5
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; ABM: Household
+ ;----------------------------------------------------
+  xw:create-note "household"
+  [
+    xw:set-text "ABM: Household"
+    xw:set-font-size 17
+    xw:create-new-column
+    xw:adjust-position ; run twice for some extra space
+  ] 
+  
+  xw:create-numeric-input "land_price"
+  [
+    xw:set-label xw:key
+    xw:set-value 750
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "external_income"
+  [
+    xw:set-label xw:key
+    xw:set-value 500
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "rent_rate_capital_lend"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.08
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "rent_rate_capital_borrow"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.08
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "rent_rate_land"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.1
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; ABM: Wealth parameters
+ ;----------------------------------------------------
+ xw:create-note "wealth"
+  [
+    xw:set-text "ABM: Wealth"
+    xw:set-font-size 17
+    xw:adjust-position 
+    xw:adjust-position 
+  ] 
+  
+  xw:create-chooser "initial-wealth-distribution"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "constant"
+      "log-normal"
+    ]
+   xw:set-selected-item "constant"
+   xw:adjust-position
+  ]
+  
+  xw:create-slider "init-wealth-correction-factor"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 20
+    xw:set-increment 1
+    xw:set-value 12
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "wealth-constant"
+  [
+    xw:set-label xw:key
+    xw:set-value 10000
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "wealth-log-mean"
+  [
+    xw:set-label xw:key
+    xw:set-value 7
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "wealth-log-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value 1
+    xw:adjust-position
+  ] 
+  
+   
+  xw:create-numeric-input "min-wealth"
+  [
+    xw:set-label xw:key
+    xw:set-value 30
+    xw:adjust-position
+  ] 
+  
+  xw:create-numeric-input "time-horizon"
+  [
+    xw:set-label xw:key
+    xw:set-value 10
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "discount-rate"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.1
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; ABM: Land Use Types
+ ;----------------------------------------------------
+  xw:create-note "Land-Use-Types"
+  [
+    xw:set-text "ABM: Land Use Types"
+    xw:set-font-size 17
+    xw:create-new-column
+    xw:adjust-position 
+  ] 
+  ; LUT 0 -----------------------
+  xw:create-note "LUT-0"
+  [
+    xw:set-text "Land Use Type 0"
+    xw:adjust-position
+  ]
+  
+  xw:create-text-input "LUT-0-folder"
+  [
+    xw:set-label xw:key
+    xw:set-text "oilpalm"
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-0-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 24 
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-0-price"
+  [
+    xw:set-label "LUT-0-price, Interface linked"
+    xw:set-value 90; = palm-oil-price; linked with Interface slider, default 90
+    xw:set-color xw:color-for-widgets-linked-with-interface
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-0-price-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value 10
+    xw:adjust-position
+  ]
+  
+  ; LUT 1 -----------------------
+  xw:create-note "LUT-1"
+  [
+    xw:set-text "Land Use Type 1"
+    xw:adjust-position
+  ]
+  
+  xw:create-text-input "LUT-1-folder"
+  [
+    xw:set-label xw:key
+    xw:set-text "rubber"
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-1-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 44
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-1-price"
+  [
+    xw:set-label "LUT-1-price, Interface linked"
+    xw:set-value 1100; = rubber-price; linked with  Interface slider, default 1100
+    xw:set-color xw:color-for-widgets-linked-with-interface
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-1-price-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value 100
+    xw:adjust-position
+  ]
+  
+  ; LUT 2 -----------------------
+  xw:create-note "LUT-2"
+  [
+    xw:set-text "Land Use Type 2"
+    xw:adjust-position
+  ]
+  
+  xw:create-text-input "LUT-2-folder"
+  [
+    xw:set-label xw:key
+    xw:set-text "NA"
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-2-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 34
+    ;xw:set-font-color xw:value
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-2-price"
+  [
+    xw:set-label xw:key
+    xw:set-value -9999
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-2-price-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value -9999
+    xw:adjust-position
+  ]
+ 
+  ; LUT 3 -----------------------
+  xw:create-note "LUT-3"
+  [
+    xw:set-text "Land Use Type 3"
+    xw:create-new-column
+    set xw:current-x (xw:current-x - 40) ; reduce space between columns (single block with LUT parameters)
+    xw:adjust-position
+    xw:adjust-position
+  ]
+  
+  xw:create-text-input "LUT-3-folder"
+  [
+    xw:set-label xw:key
+    xw:set-text "NA"
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-3-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 16
+    ;xw:set-font-color xw:value
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-3-price"
+  [
+    xw:set-label xw:key
+    xw:set-value -9999
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-3-price-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value -9999
+    xw:adjust-position
+  ]
+  
+  ; LUT 4 -----------------------
+  xw:create-note "LUT-4"
+  [
+    xw:set-text "Land Use Type 4"
+    xw:adjust-position
+  ]
+  
+  xw:create-text-input "LUT-4-folder"
+  [
+    xw:set-label xw:key
+    xw:set-text "NA"
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-4-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 134
+    ;xw:set-font-color xw:value
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-4-price"
+  [
+    xw:set-label xw:key
+    xw:set-value -9999
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "LUT-4-price-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value -9999
+    xw:adjust-position
+  ]
+  
+  ; Further LUTs/colors -----------------------
+  xw:create-note "further-colors"
+  [
+    xw:set-text "Further Colors"
+    xw:adjust-position
+  ]
+   
+  xw:create-numeric-input "matrix-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 52
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "road-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 9.9
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "inacc-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 5
+    xw:adjust-position
+  ]
+
+  xw:create-numeric-input "hh-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 8
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "links-color"
+  [
+    xw:set-label xw:key
+    xw:set-value 105
+    xw:adjust-position
+  ]
+
+  ; TODO: create seperate Tab and .nls file for LGraf-parameters?
+ 
+ ;------------------------------------------------------------------------------------
+ ;----------------------------------------------------
+ ; LGraf parameters 
+ ;----------------------------------------------------
+ ;------------------------------------------------------------------------------------
+  
+ ;----------------------------------------------------
+ ; LGraf: Model control parameters
+ ;----------------------------------------------------
+ xw:create-note "control"
+  [
+    xw:set-text "LGraf: Model Control"
+    xw:set-font-size 17
+    xw:create-new-column
+    xw:adjust-position 
+  ] 
+  
+  xw:create-checkbox "gr-reproducible?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? FALSE
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-rnd-seed"
+  [
+    xw:set-label xw:key
+    xw:set-value 100
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-width"
+  [
+    xw:set-label xw:key
+    xw:set-value 100
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-height"
+  [
+    xw:set-label xw:key
+    xw:set-value 100
+    xw:adjust-position
+  ]
+ 
+  xw:create-numeric-input "gr-cell-length-meter"
+  [
+    xw:set-label xw:key
+    xw:set-value 50
+    xw:adjust-position
+  ]
+ ;----------------------------------------------------
+ ; LGraf: Road Parameters
+ ;----------------------------------------------------
+  
+  xw:create-note "road"
+  [
+    xw:set-text "LGraf: Road"
+    xw:set-font-size 17
+    xw:adjust-position 
+    xw:adjust-position 
+  ] 
+  
+  xw:create-chooser "gr-road.algorithm"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "artificial.graffe"
+      "artificial.perlin"
+      "real.shapefile"
+    ]
+   xw:set-selected-item "real.shapefile"
+   xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-total-road-length"
+  [
+    xw:set-label xw:key
+    xw:set-value 1099
+    xw:adjust-position
+  ]
+  
+  xw:create-text-input "gr-road-map-id" 
+  [
+   xw:set-label xw:key
+   xw:set-text "jambil"
+   xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-min-dist-roads"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 20
+    xw:set-increment 1
+    xw:set-value 5
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-perlin-octaves"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 12
+    xw:set-increment 1
+    xw:set-value 10
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-perlin-persistence"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.8
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-cone-angle"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 360
+    xw:set-increment 1
+    xw:set-value 120
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-dist-weight"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.6
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; LGraf: Set up Parameters
+ ;----------------------------------------------------
+  
+  xw:create-note "setup"
+  [
+    xw:set-text "LGraf: Set Up"
+    xw:set-font-size 17
+    xw:create-new-column
+    xw:adjust-position 
+  ] 
+  
+  xw:create-chooser "gr-setup-model"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "number-of-households"
+      "number-of-villages"
+      "agricultural-area"
+    ]
+   xw:set-selected-item "agricultural-area"
+   xw:adjust-position
+  ]
+ 
+  xw:create-slider "gr-number-of-households"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 500
+    xw:set-increment 1
+    xw:set-value 100
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-number-of-villages"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 100
+    xw:set-increment 1
+    xw:set-value 12
+    xw:adjust-position
+  ]
+
+  xw:create-slider "gr-proportion-agricultural-area"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 0.01
+    xw:set-increment 1
+    xw:set-value 0.3
+    xw:adjust-position
+  ]
+  
+  
+  xw:create-slider "gr-households-per-cell"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 20
+    xw:set-increment 1
+    xw:set-value 1
+    xw:adjust-position
+  ]
+  
+
+  
+ ;----------------------------------------------------
+ ; LGraf: Household Parameters
+ ;----------------------------------------------------
+  
+  xw:create-note "gr-household"
+  [
+    xw:set-text "LGraf: Household"
+    xw:set-font-size 17
+    xw:adjust-position 
+    xw:adjust-position 
+  ] 
+    
+  xw:create-chooser "gr-hh-area-distribution"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "constant"
+      "normal"
+      "log-normal"
+    ]
+   xw:set-selected-item "log-normal"
+   xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-hh-area-mean-ha"
+  [
+    xw:set-label xw:key
+    xw:set-value 1
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-hh-area-sd-ha"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.92
+    xw:adjust-position
+  ]
+
+  xw:create-chooser "gr-vlg-area-distribution"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "constant"
+      "uniform"
+      "normal"
+      "lognormal"
+    ]
+   xw:set-selected-item "uniform"
+   xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-vlg-area-mean"
+  [
+    xw:set-label xw:key
+    xw:set-value 68.17
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-vlg-area-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value 56.73
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-occ-probability"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 1
+    xw:adjust-position
+  ]
+  
+   xw:create-chooser "gr-hh-distribution"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "constant"
+      "uniform"
+      "normal"
+      "lognormal"
+    ]
+   xw:set-selected-item "log-normal"
+   xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-hh-type-mean"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.56
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-hh-type-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.24
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; LGraf: Inaccessible Areas Parameters
+ ;----------------------------------------------------
+  
+  xw:create-note "inaccessible areas"
+  [
+    xw:set-text "LGraf: Inaccessible Areas"
+    xw:set-font-size 17
+    xw:create-new-column 
+    xw:adjust-position 
+  ] 
+    
+  xw:create-chooser "gr-inaccessible-area-location"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "random"
+      "road-connected"
+    ]
+   xw:set-selected-item "random"
+   xw:adjust-position
+  ]
+  
+  xw:create-chooser "gr-inaccessible-area-distribution"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "constant"
+      "uniform"
+      "normal"
+    ]
+   xw:set-selected-item "normal"
+   xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-inaccessible-area-fraction"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-inaccessible-area-mean"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.5
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-inaccessible-area-sd"
+  [
+    xw:set-label xw:key
+    xw:set-value 10
+    xw:adjust-position
+  ]
+  
+  
+ ;----------------------------------------------------
+ ; LGraf: Fields Parameters
+ ;----------------------------------------------------
+  
+  xw:create-note "fields"
+  [
+    xw:set-text "LGraf: Fields"
+    xw:set-font-size 17
+    xw:adjust-position 
+    xw:adjust-position 
+  ] 
+
+  xw:create-chooser "gr-field-size-distribution"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "constant"
+      "uniform"
+      "normal"
+      "log-normal"
+    ]
+   xw:set-selected-item "log-normal"
+   xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-field-size-mean-ha"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.49
+    xw:adjust-position
+  ]
+  
+  xw:create-numeric-input "gr-field-size-sd-ha"
+  [
+    xw:set-label xw:key
+    xw:set-value 0.77
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-change-strategy"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 100
+    xw:set-increment 1
+    xw:set-value 2
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "gr-s1.homebase" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "gr-s2.fields" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "gr-s3.nearby" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "gr-s4.avoid" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? TRUE
+    xw:adjust-position
+  ]
+  
+  xw:create-checkbox "gr-set-field-strategies-by-id?" 
+  [
+    xw:set-label xw:key
+    xw:set-selected? FALSE
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-field-strategies-id"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 1
+    xw:set-maximum 8
+    xw:set-increment 1
+    xw:set-value 7
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; LGraf: Land Use Parameters
+ ;----------------------------------------------------
+  
+  xw:create-note "gr land use"
+  [
+    xw:set-text "LGraf: Land Use"
+    xw:set-font-size 17
+    xw:create-new-column
+    xw:adjust-position 
+  ] 
+
+  xw:create-chooser "gr-LUT-fill-up"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "LUT-1-fraction"
+      "LUT-2-fraction"
+      "LUT-3-fraction"
+      "LUT-4-fraction"
+      "LUT-5-fraction"
+    ]
+   xw:set-selected-item "LUT-1-fraction"
+   xw:adjust-position
+  ]
+  
+  xw:create-chooser "gr-land-use-types"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "landscape-level-fraction"
+      "household-level-specialization"
+      "spatial-clustering (not there yet)"
+    ]
+   xw:set-selected-item "household-level-specialization"
+   xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-0-fraction"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.5
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-1-fraction"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0.5
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-2-fraction"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-3-fraction"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-4-fraction"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-0-specialize"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-1-specialize"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-2-specialize"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-3-specialize"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+  xw:create-slider "gr-LUT-4-specialize"
+  [
+    xw:set-label xw:key
+    xw:set-minimum 0
+    xw:set-maximum 1
+    xw:set-increment 0.01
+    xw:set-value 0
+    xw:adjust-position
+  ]
+  
+ ;----------------------------------------------------
+ ; LGraf: Land Use Parameters
+ ;----------------------------------------------------
+  
+  xw:create-note "gr input/output"
+  [
+    xw:set-text "LGraf: Input/Output"
+    xw:set-font-size 17
+    xw:adjust-position 
+    xw:adjust-position 
+  ] 
+
+  xw:create-chooser "gr-default.maps"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "forest-non-forest"
+      "landuse"
+      "landuse-type"
+      "field-patches"
+      "household-patches"
+      "forestcluster"
+    ]
+   xw:set-selected-item "landuse-type"
+   xw:adjust-position
+  ]
+  
+  xw:create-chooser "gr-write-household-ids"
+  [
+    xw:set-label xw:key
+    xw:set-items 
+    [ 
+      "only-first-households"
+      "layered-files"
+    ]
+   xw:set-selected-item "only-first-households"
+   xw:adjust-position
+  ]
+end

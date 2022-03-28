@@ -1,0 +1,170 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Code specifically for the Night of Science (NoS) Education Version ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; special globals for NoS Education verison:
+globals [
+hectare-highscore
+system-value
+global-lut-carbon-sum  ;"lut-carbon-sum" is a local variable in the main version
+]
+
+;;;;;;;;;;;;
+;; set up ;;
+;;;;;;;;;;;;
+to NoS-setup
+  let old-hectare-highscore hectare-highscore
+  ca
+  ifelse (old-hectare-highscore < 0) [set hectare-highscore 0] [set hectare-highscore old-hectare-highscore]
+  NoS-overwrite-parameters-tab
+  load-globals-from-parameters-tab
+  setup-with-external-maps
+end
+
+
+to NoS-overwrite-interface-tab ; with values from parameter tab  
+  set palm-oil-price [xw:value] xw:of "LUT-0-price"
+  set rubber-price [xw:value] xw:of "LUT-1-price"
+  set learning [xw:selected?] xw:of "learning-spillover?"
+end
+
+ 
+to NoS-overwrite-parameters-tab ; with values from Interface tab
+  xw:ask "LUT-0-price" [xw:set-value palm-oil-price]
+  xw:ask "LUT-1-price" [xw:set-value rubber-price]
+  xw:ask "learning-spillover?" [xw:set-selected? learning]
+end
+
+to reset-parameters
+  ; reset parameters in User Interface
+  set palm-oil-price 90 
+  set rubber-price 1100
+  set learning TRUE
+  ; reset parameters in Parameter tab
+  startup 
+  ; show Parameter tab
+  xw:select-tab 2 ; TODO: selecting by tab's key doesn't work?
+end
+
+;;;;;;;;;;;;;;;
+;; highscore ;;
+;;;;;;;;;;;;;;;
+to update-highscore
+    if ((sum [h_wealth] of hhs / area_under_agriculture - hectare-CO2-debt) > hectare-highscore) ;
+    [
+      set hectare-highscore (sum [h_wealth] of hhs / area_under_agriculture - hectare-CO2-debt) ; = overall system value
+    ]
+end
+
+; Alternative: household-highscore
+
+; globals[household-highscore]
+
+;let old-household-highscore household-highscore
+;ifelse (old-household-highscore < 0) [set household-highscore 0] [set household-highscore old-household-highscore]
+
+;    if ((mean [h_wealth] of hhs - household-CO2-debt) > household-highscore) ;
+;    [
+;      set household-highscore (mean [h_wealth] of hhs - household-CO2-debt) ; = overall system value
+;    ]
+
+
+;;;;;;;;;;;
+;; plots ;;
+;;;;;;;;;;;
+
+to NoS-do-plots
+  NoS-paint-plot-carbon
+  NoS-paint-plot-LUT-fractions
+  paint-plot-hectare-wealth-and-CO2-debt
+  
+end
+
+
+to NoS-paint-plot-carbon
+  
+  set-current-plot "Carbon storage in agricultural area"
+  set global-lut-carbon-sum 0
+  ;; Plot LUT carbon:
+  foreach LUT-ids
+  [
+    LUT-id ->
+    create-temporary-plot-pen runresult (word "LUT-" LUT-id "-folder")
+    set-plot-pen-color runresult (word "LUT-" LUT-id "-color")
+    let lut-carbon last item LUT-id carbon
+    set global-lut-carbon-sum global-lut-carbon-sum + lut-carbon
+    plot (lut-carbon / area_under_agriculture)
+    
+  ]
+  ;; Total:
+  create-temporary-plot-pen "total"
+  set-plot-pen-color black
+  plot (global-lut-carbon-sum / area_under_agriculture)
+
+end
+
+to NoS-paint-plot-LUT-fractions
+  
+  set-current-plot "Land use type fractions"
+  foreach LUT-ids
+  [
+    LUT-id ->
+    
+    create-temporary-plot-pen runresult (word "LUT-" LUT-id "-folder")
+    set-plot-pen-color runresult (word "LUT-" LUT-id "-color")
+    let fraction item LUT-id LUT-fractions
+    plot fraction * 100 ; [%]
+  ]
+  
+end
+
+
+to paint-plot-hectare-wealth-and-CO2-debt
+  
+  set-current-plot "Hectare wealth & CO2 debt"
+  create-temporary-plot-pen "wealth"
+  set-plot-pen-color green
+  plot sum [h_wealth] of hhs / area_under_agriculture
+  
+  create-temporary-plot-pen "'CO2 debt'"
+  set-plot-pen-color red
+  plot hectare-CO2-debt
+end
+
+
+to-report hectare-CO2-debt ; mean carbon "debt" [US-Dollar / household]
+  let carbon-deficit (carbon_forest - (global-lut-carbon-sum / area_under_agriculture)) ; [t/ha]
+  let CO2-emission (carbon-deficit * 3.67) ; [t/ha] -> 1 ton C turns into 3.67 tons of CO2
+  report CO2-emission * CO2-price ; CO2 market price = 20-30 EUR; actual costs of CO2 emissions (damage by climate change etc.) = 180 EUR
+end
+
+
+;;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+;
+;to paint-plot-household-wealth-and-CO2-debt
+;  
+;  set-current-plot "Household wealth & CO2 debt"
+;  create-temporary-plot-pen "wealth"
+;  set-plot-pen-color green
+;  plot mean [h_wealth] of hhs
+;  
+;  create-temporary-plot-pen "'CO2 debt'"
+;  set-plot-pen-color red
+;  plot household-CO2-debt
+;  
+;; alternative: boxplots
+;; let plotname "Household wealth" 
+;; let x ticks
+;; let y  [h_wealth] of hhs
+;; let boxwidth 0.4
+;; if (length y > 2) [boxplot plotname x y boxwidth]
+;end
+;
+;
+;to-report household-CO2-debt ; mean carbon "debt" [US-Dollar / household]
+;  let carbon-deficit (carbon_forest - (global-lut-carbon-sum / area_under_agriculture)) ; [t/ha]
+;  let CO2-emission (carbon-deficit * 3.67) ; [t/ha] -> 1 ton C turns into 3.67 tons of CO2
+;  let CO2-emission-per-household (CO2-emission * area_under_agriculture / count hhs) ; [t/household]
+;  report CO2-emission-per-household * CO2-price ; CO2 market price = 20-30 EUR; actual costs of CO2 emissions (damage by climate change etc.) = 180 EUR
+;end
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

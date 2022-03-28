@@ -1,0 +1,9 @@
+landuse,rubber
+management,conventional
+labor_function,[a -> lut_function_labor_rubber a]
+tinput_function,[a -> lut_function_tinput_rubber a]
+invest_function,[a -> lut_function_invest_rubber a]
+price_tinput,0.5
+wages,1.2
+yield_factor,1
+external_income_factor,1

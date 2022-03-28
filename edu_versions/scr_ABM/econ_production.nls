@@ -1,0 +1,110 @@
+;###################################################################################
+;PRODUCTION [Tons]
+;###################################################################################
+To-report optimal-yield [landuse age]
+  ;; Report the item age from the yieldlist if available, otherwise report the last item from the list
+  let yield_function [l_yield_function] of a-lut landuse
+  let yield (runresult yield_function age)
+  report yield
+end
+
+To-report calculate_maximum_production_cell [landuse pp-management age]
+  ;calculates and reports maximum production [Tons] for one cell of land-use type 'land-use' under optimal factor inputs depending on plantation age
+  let production ifelse-value (member? landuse LUT-ids) [(optimal-yield landuse age) * item pp-management [l_mng_yield_factor] of a-lut landuse][0]
+  report production
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report calculate_leontief_production_cell [landuse pp-management age labor tinput capitalstock ]   ; <2.0>MANAGE
+ ;calculates actual production of a cell based on a Leontief production function: 
+ ;takes Labor, Capitalstock, Technical Inputs per cell and gives back production[Tons] of this cell
+ ;production for oil palm is tons of fresh fruit bunches
+ ;production for rubber is tons of rubber  
+ let production 0
+ let optimal_production calculate_maximum_production_cell landuse pp-management age
+
+ let optimal_labor (optimal-labor landuse pp-management age)
+ let optimal_capital (optimal-capitalstock landuse pp-management age)
+ let optimal_technical_input (optimal-tinput landuse pp-management age)
+  
+ if optimal_production > 0
+ [
+   let frac_labor.optimallabor (labor / optimal_labor)
+   let frac_capital.optimalcapital (capitalstock / optimal_capital)
+   let frac_tinput.optimaltinput (tinput / optimal_technical_input)
+   
+   if (frac_labor.optimallabor  <= frac_capital.optimalcapital)  and (frac_labor.optimallabor <= frac_tinput.optimaltinput) [set production optimal_production * frac_labor.optimallabor]
+   if (frac_capital.optimalcapital <= frac_labor.optimallabor) and (frac_capital.optimalcapital <= frac_tinput.optimaltinput) [set production optimal_production * frac_capital.optimalcapital]
+   if (frac_tinput.optimaltinput <= frac_labor.optimallabor) and (frac_tinput.optimaltinput <= frac_capital.optimalcapital) [set production optimal_production * frac_tinput.optimaltinput]
+ ]
+  
+ report production 
+End
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report calculate_actual_production_cell [landuse pp-management pp-ineff age labor tinput capitalstock]
+ ;calculates actual production of a cell based on the production from the Leontief production function and the household-specific inefficiency factors: 
+ ;takes Labor, Capitalstock, Technical Inputs per cell and gives back production[Tons] of this cell
+ ;production for oil palm is tons of fresh fruit bunches
+ ;production for rubber is tons of rubber
+ 
+  let leontief-production calculate_leontief_production_cell landuse pp-management age labor tinput capitalstock
+  let actual-production leontief-production * (1 - pp-ineff)
+  
+  report actual-production
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report calculate-household-production
+  ;calculates and reports the annual production of palm oil and rubber of one household in tons, based on values on the patch variable p_production
+  let household-production map [LUT-id -> sum [p_production] of h_patches with [p_landuse = LUT-id]] LUT-ids
+  report household-production
+End  
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;REVENUE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+To-report calculate_revenue_cell [landuse age labor tinput capitalstock pp-management pp-ineff]
+  ;reports revenue from one cell in one year based on the actual prices and the production from the leontief production function
+  let revenue 0 
+  let production-cell calculate_actual_production_cell landuse pp-management pp-ineff age labor tinput capitalstock
+  
+  ;; Calculate revenue by using actual prices:
+  set revenue production-cell * item landuse prices
+ 
+  report revenue
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To-report calculate-household-revenue [option-matrix inputs]
+  ;reports revenue [$] of a household from all fields in one year in a given option and with given inputs of labor and tinput
+  let revenue-household 0
+  let number-of-fields item 1 matrix:dimensions option-matrix
+  let field 0
+  
+  
+  while [field < number-of-fields]
+  [
+    let landuse matrix:get option-matrix 1 field
+    let age matrix:get option-matrix 2 field 
+    let pp-management item landuse h_management
+    let pp-ineff item landuse h_inefficiencies
+    let labor matrix:get inputs 1 field
+    let tinput matrix:get inputs 2 field    
+    let capitalstock matrix:get option-matrix 4 field  
+    let revenue-cell calculate_revenue_cell landuse age labor tinput capitalstock pp-management pp-ineff
+    let field-size matrix:get option-matrix 3 field
+    let revenue-patch revenue-cell * field-size
+    set revenue-household revenue-household + revenue-patch
+    set field field + 1 
+  ]
+ 
+  report revenue-household
+End  
+

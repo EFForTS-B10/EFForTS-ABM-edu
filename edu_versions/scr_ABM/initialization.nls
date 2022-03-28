@@ -1,0 +1,345 @@
+;###################################################################################
+; ╦┌┐┌┬┌┬┐┬┌─┐┬  ┬┌─┐┌─┐┌┬┐┬┌─┐┌┐┌
+; ║││││ │ │├─┤│  │┌─┘├─┤ │ ││ ││││
+; ╩┘└┘┴ ┴ ┴┴ ┴┴─┘┴└─┘┴ ┴ ┴ ┴└─┘┘└┘
+;###################################################################################
+;###################################################################################
+; GLOBAL CONSTANTS AND PARAMETERS
+;###################################################################################
+
+To set_global_constants
+  
+  ;;; SET OTHER GLOBALS:
+  set simulation_year 0 
+  set patch_size 50 * 50 / 10000  ; side length of patch is 50m. patch size is given in ha, 0.25 ha
+  ;set landscape_size ((max-pxcor * 2 + 1) * (max-pycor * 2 + 1)) * patch_size  ;landscape size in ha 
+  
+  set landscape_size ((max-pxcor + 1) * (max-pycor + 1)) * patch_size  ;landscape size in ha 
+  set ineff_precision 2 ;;Set the number of digits for household inefficiency values
+  set prices-matrix matrix:copy create-prices-matrix ; set prices-matrix as matrix (global variable) and assign values from data to it
+  set prices but-first matrix:get-row prices-matrix 0
+  set carbon_forest 180 ; Carbon storage in forest (=matrix) [t / ha] ; (Dislich 2018)
+  set carbon []
+
+End  
+
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To set_remaining_constants
+  ask hhs 
+  [ 
+    set h_exincome calc_external_income
+    set h_debts 0
+  ]
+  
+  ;; Set consumption to zero if not activated:
+  if (consumption-on? = FALSE)
+  [
+    set consumption_base 0
+    set consumption_frac_wealth 0
+    set consumption_frac_cash 0
+  ]
+  
+  ask patches 
+  [
+   set p_fieldsize 1 
+  ]
+  
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to-report calc_external_income
+  
+  ;; External income depends on management
+  ;; We first calculate the fractions of landuse this household is cultivating:
+  let myluts map [i -> count h_patches with [p_landuse = i] / count h_patches] LUT-ids
+  let i 0
+  let external_income_factor 0
+  foreach myluts
+  [
+    mylut ->
+    let mylut_mng item i h_management
+    let lut_mng_factor [item mylut_mng l_mng_external_income_factor] of a-lut i
+    let lut_mng_factor_weighted lut_mng_factor * mylut
+    set external_income_factor (external_income_factor + lut_mng_factor_weighted)
+    set i (i + 1)
+  ]
+ 
+  let external_income_final precision (external_income * external_income_factor) 3
+  report external_income_final
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To set-rand-seed
+  ;; Set/write random seed
+  ifelse (reproducible? = TRUE) 
+  [
+    random-seed rnd-seed
+  ]
+  [
+    set rand-seed new-seed 
+    print (word "EFForTS-ABM random seed: " rand-seed)
+    random-seed rand-seed
+  ]
+
+
+End
+ 
+
+;###################################################################################
+; INITIALIZE FIELDS AND CELLS
+;###################################################################################
+
+To calculated-field-sizes
+  ;calculates the sizes of all agricultural fields and assings them to the patch variable p_fieldsize
+  
+  let number-of-fields (max [p_id] of patches + 1)  ;there is also a patch 0, therefore + 1
+   
+  let counter 0
+  while [counter < number-of-fields]
+  [
+     let field-size count patches with [p_id = counter] 
+     ask patches with [p_id = counter]
+     [
+       set p_fieldsize field-size 
+     ]
+     
+     set counter counter + 1
+  ] 
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To assign-patch-age
+  
+  ;; Create list witch patch-ids:
+  let pids remove-duplicates [p_id] of patches
+  
+  foreach pids
+  [
+    i ->
+    let landuse [p_landuse] of one-of patches with [p_id = i]   
+    let age ifelse-value (member? landuse LUT-ids) [random [l_max_age] of a-lut landuse][0]
+  
+    ask patches with [p_id = i]
+    [
+      set p_age age
+    ]
+  ]            
+  
+end
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To init-patch-capital-stock
+  ;initialization of the capital stock. simply takes the optimal capital stock of this landuse and this age from the list
+  
+  ask patches with [member? p_landuse LUT-ids] 
+  [  
+    set p_capitalstock optimal-capitalstock p_landuse p_management p_age
+  ]
+End 
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To init-investment-costs
+  ask patches with [member? p_landuse LUT-ids]
+    [
+      set p_invest optimal-invest p_landuse p_management p_age
+    ]
+End    
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To assign-hh-capital-stock
+  ask hhs
+  [
+    set h_capitalstock sum [p_capitalstock] of h_patches 
+  ] 
+  
+End  
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To init-household-area
+  ask hhs
+  [
+    set h_area count h_patches 
+  ] 
+   
+End  
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+to init-household-management
+  ask hhs
+  [
+    set h_management draw-household-management
+    ask h_patches [set p_management item p_landuse [h_management] of myself]
+  ]
+  
+end
+to-report draw-household-management
+  report n-values length LUT-ids [? -> one-of item ? LUT-ids-manage]
+end
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+to init-log-land-use-change-list
+
+  ;; The h_land-use-change lists log land-use change decisions of each household
+  ;; This information is for example used within the creation of the social option matrix
+  
+  ;; The h_land-use-change list has a nested structure:
+  ;; The outer list elements represent the Land-uses (item 0 = landuse 0, item 1 = landuse 1)
+  ;; The inner list elements of each sublist again represent the land-uses and track a decision with the current tick number:
+  ;; E.g. imagine the following list: [[12 13][22]][[44][20]]
+  ;; The household made 4 land-use decisions. On tick 12 and 13 he replanted fields of landuse 0 (item 0 item 0)
+  ;; On tick 22 he changed one field from landuse 0 to landuse 1 (item 0 item 1)
+  ;; On tick 44 he changed one field from landuse 1 to landuse 0 (item 1 item 0)
+  ;; On tick 20 he replanted a field of landuse 1 (item 1 item 1)
+  
+  ask hhs
+  [
+    set h_land-use-change draw-land-use-change-list
+  ]
+  
+end
+
+to-report draw-land-use-change-list
+  let subliste []
+  repeat length LUT-ids [set subliste lput (list) subliste]
+  let liste []
+  repeat length LUT-ids [set liste lput subliste liste]
+  
+  report(liste)
+end
+
+;###################################################################################
+; INITIALIZE HOUSEHOLDS (WEALTH, INEFFICIENCIES, NETWORKS)
+;###################################################################################
+
+To init-household-wealth
+  ;draw number-of-household random numbers from log-normal distribution with given (fitted) parameters 
+  ;and assign the resulting wealth values according to the household area: the bigger the household, the higher the wealth  
+  
+  if initial-wealth-distribution = "constant"
+  [
+    ask hhs
+    [
+      set h_wealth wealth-constant
+    ]  
+  ]
+  
+  if initial-wealth-distribution = "log-normal"
+  [
+  
+  let list-of-draws []
+  let number-of-households count hhs
+  let wealth-mu wealth-log-mean
+  let wealth-sd wealth-log-sd
+  
+     let counter 0
+     while[counter < number-of-households]
+     [
+       let wealth round(exp(random-normal wealth-mu wealth-sd))  ; 
+       if wealth >= min-wealth
+       [ 
+         ;set list-of-draws lput wealth list-of-draws      
+         set list-of-draws lput (wealth * init-wealth-correction-factor) list-of-draws ;multiplied by a factor of 10, as otherwise, initial hh wealth is too low
+         set counter counter + 1
+       ]
+     ] 
+         
+     set list-of-draws sort list-of-draws ;sort list of draws, smallest wealth comes first
+         
+     set counter 0
+    foreach sort-on [h_area] hhs ;assign wealth to households, small households get less initial wealth
+     [
+       i ->
+       ask i 
+       [
+         set h_wealth item counter list-of-draws 
+         set counter counter + 1
+       ] 
+     ] 
+     
+  ] 
+         
+End  
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To init-household-inefficiencies
+  ;assigs inefficiency factor for each household and land-use type
+  ;values are drawn from a gamma distribution ; if drawn values are out of the range [0,1], they are rejected
+   
+  ask hhs ;initialize inefficiencies
+  [
+    set h_inefficiencies n-values length LUT-ids [0]
+  ;; TODO: add inefficiency sliders to Interface Tab (and don't use extern files to import l_inefficiency_lambda/_alpha)????
+  ;; and outcomment heterogenous-hhs? code
+;    let palm-oil-inefficiency 0.5 ; TODO: as Interface slider? Add to Parameters tab? 
+;    let rubber-inefficiency 0.5 ; TODO: as Interface slider? Add to Parameters tab?
+;    set h_inefficiencies replace-item 0 h_inefficiencies palm-oil-inefficiency
+;    set h_inefficiencies replace-item 1 h_inefficiencies rubber-inefficiency
+  ]
+  
+  ;; ONLY DISTRIBUTE HETEROGENOUS INEFFICIENCIES IF OPTION IS SET ON THE INTERFACE:
+
+  
+  if (heterogeneous-hhs?) ; if there are no heterogeneous inefficiencies, there are no inefficiencies at all....
+  [
+    ask hhs
+    [
+      ;; Count patches of each landuse:
+      let lut_area map [i -> count h_patches with [p_landuse = i]] LUT-ids
+      let valid FALSE
+      let ineff_temp []
+      
+      while [valid = FALSE]
+      [
+        set ineff_temp draw-inefficiencies-each-lut
+        
+        ;; Now lets check, if the lowest inefficiency was drawn for the landusetype with the most patches:
+        let lut-id-most-patches position (max lut_area) lut_area
+        let lut-id-less-ineff position (min ineff_temp) ineff_temp
+        ;; If these two match, stop the loop:
+        if (lut-id-most-patches = lut-id-less-ineff)
+        [
+          set valid TRUE
+          set h_inefficiencies ineff_temp
+        ]
+      ]
+    ]
+  ]
+    
+end
+
+
+to-report draw-inefficiencies-each-lut
+  let ineff_temp []
+  let valid FALSE
+  
+  while [valid = FALSE]
+  [
+    set ineff_temp []
+    
+    foreach LUT-ids
+    [
+      lut ->
+      
+      let ineff precision (1 - ((random-gamma ([l_inefficiency_alpha] of a-lut lut) ([l_inefficiency_lambda] of a-lut lut)) / 100 )) ineff_precision
+      set ineff_temp lput ineff ineff_temp
+    ]
+ 
+    ;; If all values are between 0 and 1 the set is valid:
+    if (not member? false map [? -> ? >= 0 and ? <= 1] ineff_temp)[set valid TRUE]
+  ]
+  
+  report ineff_temp
+end
