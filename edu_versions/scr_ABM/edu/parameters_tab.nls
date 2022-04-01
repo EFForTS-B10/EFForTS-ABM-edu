@@ -505,28 +505,28 @@ to add-parameter-widgets
     xw:set-items 
     [ 
       "one-farmer-one-field" 
-     ;"one-farmer"                         ; runtime error
-     ;"five-farmers"                       ; runtime error
-      "five-farmers2" 
-      "five-farmers3"
-     ;"ten-farmers"                        ; runtime error
-      "ten-farmers2" 
-     ;"twenty-farmers"                     ; runtime error
-     ;"twenty-farmers2"                    ; runtime error
-     ;"thirty-farmers2"                    ; runtime error
-     ;"fifty-farmers"                      ; runtime error
-     ;"fifty-farmers2"                     ; runtime error
-     ;"fifty-farmers4"                     ; runtime error
-      "fifty-farmers5" 
-     ;"hundred-farmers"                    ; runtime error
-      "hundred-farmers2" 
-      "hundred-farmers3" 
-     ;"twohundred-farmers"                 ; runtime error
-     ;"twohundred-farmers-big-plantations" ; runtime error
-     ;"fourhundred-farmers"                ; runtime error
+      "one-farmer"                         
+    ; "five-farmers"                      ; incl. junglerubber -> set LUT-2-folder "junglerubber"
+      "five-farmers2"                    
+      "five-farmers3"                     
+    ; "ten-farmers"                       ; incl. junglerubber -> set LUT-2-folder "junglerubber"
+      "ten-farmers2"                      
+    ; "twenty-farmers"                    ; incl. junglerubber -> set LUT-2-folder "junglerubber"
+      "twenty-farmers2"                           
+      "thirty-farmers2"                           
+      "fifty-farmers"                              
+      "fifty-farmers2"                         
+      "fifty-farmers4"                           
+      "fifty-farmers5"                       
+    ; "hundred-farmers"                    ; incl. junglerubber -> set LUT-2-folder "junglerubber"
+      "hundred-farmers2"                   ; incl. junglerubber -> set LUT-2-folder "junglerubber"
+      "hundred-farmers3"                 
+      "twohundred-farmers"                 ; incl. junglerubber -> set LUT-2-folder "junglerubber"
+    ; "twohundred-farmers-big-plantations" ; incl. junglerubbe and type 1000 (?!?)
+    ; "fourhundred-farmers"                ; incl. junglerubber -> set LUT-2-folder "junglerubber"
       "landmarkets1" ; takes long!
       "landmarkets2" ; takes long!
-     ;"EFForTS-LGraf"                      ; internal error
+    ;  "EFForTS-LGraf"                     ; load LGraf files with $git submodule update --init ; still doesnt work...
     ]
     xw:set-selected-item "hundred-farmers3"
     xw:adjust-position
@@ -961,7 +961,7 @@ to add-parameter-widgets
   xw:create-text-input "LUT-2-folder"
   [
     xw:set-label xw:key
-    xw:set-text "NA"
+    xw:set-text "junglerubber_deactivated"  ; set text to "junglerubber" if junglerubber should be included in the simulation
     xw:adjust-position
   ]
   
@@ -976,14 +976,14 @@ to add-parameter-widgets
   xw:create-numeric-input "LUT-2-price"
   [
     xw:set-label xw:key
-    xw:set-value -9999
+    xw:set-value 1100
     xw:adjust-position
   ]
   
   xw:create-numeric-input "LUT-2-price-sd"
   [
     xw:set-label xw:key
-    xw:set-value -9999
+    xw:set-value 255
     xw:adjust-position
   ]
  
@@ -1399,7 +1399,7 @@ to add-parameter-widgets
       "constant"
       "uniform"
       "normal"
-      "lognormal"
+      "log-normal"
     ]
    xw:set-selected-item "log-normal"
    xw:adjust-position

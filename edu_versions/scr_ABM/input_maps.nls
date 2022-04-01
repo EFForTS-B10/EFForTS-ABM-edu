@@ -195,7 +195,7 @@ to ls_run_graffe
 
   ;; Basic model setup
   ls:let gr-reproducible? gr-reproducible?
-  ls:ask ls:models [set reproducible? gr-reproducible?]  
+  ls:ask ls:models [set reproducable? gr-reproducible?]  
   ls:let gr-rnd-seed gr-rnd-seed
   ls:ask ls:models [set rnd-seed gr-rnd-seed]
   ls:let gr-width gr-width

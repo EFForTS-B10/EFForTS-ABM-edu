@@ -55,7 +55,14 @@ to-report calc_external_income
   
   ;; External income depends on management
   ;; We first calculate the fractions of landuse this household is cultivating:
-  let myluts map [i -> count h_patches with [p_landuse = i] / count h_patches] LUT-ids
+  let myluts []
+  ifelse count h_patches > 0 
+  [ 
+    set myluts map [i ->  count h_patches with [p_landuse = i] / count h_patches] LUT-ids
+  ] [
+    set myluts map [i ->  0] LUT-ids
+  ]
+    
   let i 0
   let external_income_factor 0
   foreach myluts
