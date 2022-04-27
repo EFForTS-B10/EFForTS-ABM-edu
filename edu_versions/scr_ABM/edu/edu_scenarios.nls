@@ -38,7 +38,6 @@ to run-scenario
     file-delete outputfile]
 
   do-scenario-replicates replicates modelsteps outputfile
- ; do-scenario-output replicates modelsteps outputfile ; TODO: needed?
 
   print "Finished running scenarios!"
 
@@ -53,7 +52,6 @@ to update-scenario-parameters
 
   ;; Set seed to random seed:
   xw:ask "reproducible?" [xw:set-selected? FALSE]
-
   ;; Set price parameters:
   ifelse (member? scenarios (list "CO" "CI" "CIL"))
   [

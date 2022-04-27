@@ -12,7 +12,7 @@ to learning-spillover
     ;; Store the current inefficencies in a temp variable:
     set h_inefficiencies_temp h_inefficiencies
     
-    ;; Households cna only improve their inefficiency of landuses they are currently cultivating:
+    ;; Households can only improve their inefficiency of landuses they are currently cultivating:
     let myluts remove-duplicates [p_landuse] of h_patches
     
     foreach myluts
@@ -58,7 +58,7 @@ to spillover-find-max-neighbor-dist
     set distance-list lput distance min-one-of other hhs [distance myself] distance-list
   ]
   
-  print max distance-list
+  ;print max distance-list
 end
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -73,7 +73,7 @@ to spillover-find-max-hh-dist
     set distance-list lput distance max-one-of other hhs [distance myself] distance-list
   ]
   
-  print max distance-list
+  ;print max distance-list
 end
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -82,13 +82,14 @@ end
 
 to setup_social_networks
   
+  type "Set up social networks"
   ;; Initialize connected hhs:
   ask hhs
   [
     set h_connected_hhs (no-turtles)
   ]
   
-  ;; INitialize social network:
+  ;; Initialize social network:
   if (setup-hh-network != "hh-nw-none")
   [
     ;; Setup road network:
@@ -105,19 +106,20 @@ to setup_social_networks
         ]
       ]
     ]
+    
+    
     ask hhs
     [
       create-links-with other hhs-on neighbors 
     ]
   
-  
-    ;; Setup social network, according to interface settings:
+    ;; Setup social network, according to interface settings: (e.g. hh-nw-kernel-distance)
     run setup-hh-network 
   
     ;; Create links of social network:
     clear-links
     ask hhs with [h_id = "nw"] [die]
-  
+   
     ask hhs
     [
       if (count h_connected_hhs > 0)
@@ -125,8 +127,8 @@ to setup_social_networks
         create-links-with h_connected_hhs [set color links-color]
       ]
     ]
-  ]
-  
+  ] 
+  print " finished!"
 end
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -142,6 +144,15 @@ to hh-nw-kernel
   let homebase-distances []
   let already-asked-pairs []
   
+  ; create progress bar with some percentages because this process may take a while
+  let n count homebase-turtles
+  let counter 0
+  let smaller20 true
+  let smaller40 true
+  let smaller60 true
+  let smaller80 true
+  type " 0%"
+  
   ask homebase-turtles
   [
     ask other homebase-turtles
@@ -152,14 +163,24 @@ to hh-nw-kernel
         let dest-distance nw:distance-to myself 
         set already-asked-pairs lput (list self myself) already-asked-pairs
       
-      
+        if (dest-distance != false) [ ; SebER: dest-distance might be false, if no path exist -> would cause error
         if (random-float 1 < get-kernel-probability dest-distance kernel-alpha)
         [
           set homebase-distances lput dest-distance homebase-distances
           set h_connected_hhs (turtle-set h_connected_hhs myself)
-        ]
+        ]]
       ]
-    ]   
+    ]
+    type "."
+    set counter counter + 1
+    let percentage (counter / n * 100)
+ 
+    if (percentage >= 20 and smaller20 = true) [type "20%" set smaller20 false]
+    if (percentage >= 40 and smaller40 = true) [type "40%" set smaller40 false]
+    if (percentage >= 60 and smaller60 = true) [type "60%" set smaller60 false]
+    if (percentage >= 80 and smaller80 = true) [type "80%" set smaller80 false]
+    if (percentage >= 100) [type "100%"]
+    
   ]
   
 end
@@ -198,7 +219,6 @@ to hh-nw-kernel-distance
       ]
     ]
   ]
-    
   
 end
 

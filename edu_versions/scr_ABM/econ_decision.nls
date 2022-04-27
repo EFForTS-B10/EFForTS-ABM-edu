@@ -204,7 +204,6 @@ To update-patch-and-household-variables [wealth this-option-matrix factor-inputs
       ;print (word "lu " p_landuse " man " p_management " ineff " p_ineff " age " age " cpstock " capitalstock)
       set p_labor matrix:get factor-inputs 1 counter
       set p_tinput matrix:get factor-inputs 2 counter
-        
       set p_production calculate_actual_production_cell p_landuse p_management p_ineff age p_labor p_tinput capitalstock
       
       ;;Store the production values for output:

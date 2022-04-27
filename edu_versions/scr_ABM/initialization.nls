@@ -288,10 +288,10 @@ To init-household-inefficiencies
   ask hhs ;initialize inefficiencies
   [
     set h_inefficiencies n-values length LUT-ids [0]
-  ;; TODO: add inefficiency sliders to Interface Tab (and don't use extern files to import l_inefficiency_lambda/_alpha)????
+  ;; Alternative: add inefficiency sliders to Interface Tab (and don't use extern files to import l_inefficiency_lambda/_alpha)
   ;; and outcomment heterogenous-hhs? code
-;    let palm-oil-inefficiency 0.5 ; TODO: as Interface slider? Add to Parameters tab? 
-;    let rubber-inefficiency 0.5 ; TODO: as Interface slider? Add to Parameters tab?
+;    let palm-oil-inefficiency 0.5 ;
+;    let rubber-inefficiency 0.5 ; 
 ;    set h_inefficiencies replace-item 0 h_inefficiencies palm-oil-inefficiency
 ;    set h_inefficiencies replace-item 1 h_inefficiencies rubber-inefficiency
   ]

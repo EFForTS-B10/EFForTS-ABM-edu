@@ -499,7 +499,7 @@ to add-parameter-widgets
     xw:adjust-position ; run twice for some extra space
   ]
   
-  xw:create-chooser "which-map"  ; TODO: fix errors
+  xw:create-chooser "which-map" 
   [
     xw:set-label xw:key
     xw:set-items 
@@ -526,7 +526,7 @@ to add-parameter-widgets
     ; "fourhundred-farmers"                ; incl. junglerubber -> set LUT-2-folder "junglerubber"
       "landmarkets1" ; takes long!
       "landmarkets2" ; takes long!
-    ;  "EFForTS-LGraf"                     ; load LGraf files with $git submodule update --init ; still doesnt work...
+      "EFForTS-LGraf"                     ; load LGraf files with $git submodule update --init 
     ]
     xw:set-selected-item "hundred-farmers3"
     xw:adjust-position
@@ -1104,7 +1104,6 @@ to add-parameter-widgets
     xw:adjust-position
   ]
 
-  ; TODO: create seperate Tab and .nls file for LGraf-parameters?
  
  ;------------------------------------------------------------------------------------
  ;----------------------------------------------------
@@ -1295,8 +1294,8 @@ to add-parameter-widgets
   [
     xw:set-label xw:key
     xw:set-minimum 0
-    xw:set-maximum 0.01
-    xw:set-increment 1
+    xw:set-maximum 1
+    xw:set-increment 0.01
     xw:set-value 0.3
     xw:adjust-position
   ]

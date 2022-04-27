@@ -175,6 +175,8 @@ hhs-own
 
 ; Main Setup procedure:
 To setup-with-external-maps
+  print " "
+  print " "
   print["setting up"]
 
   ; control randomness
@@ -223,6 +225,8 @@ To setup-with-external-maps
 
   ; Reset the time counter
   reset-ticks
+  print ["Set up finished!"]
+  print " "
 
 End
 

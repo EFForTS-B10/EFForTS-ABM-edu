@@ -12,6 +12,7 @@ to paint
   paint-landuse
   paint-hhs
 end
+
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 To paint-landuse                                                                               ; now give the patches a color according to their landuse
   ;ask patches [set pcolor (scale-color green landuse (first n-land) (last n-land)) + 15]      ; one generic option
@@ -28,9 +29,10 @@ To paint-landuse                                                                
     if (show-homebases? and p_homebase > 0) [set pcolor hh-color]
   ]  
 End
+
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 to paint-hhs
-  ask hhs [set color ifelse-value (h_immigrant? = TRUE) [hh-color + 10][hh-color]] ; TODO: delete?
+ask hhs [set color ifelse-value (h_immigrant? = TRUE) [hh-color + 10][hh-color]] 
 end
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -224,7 +226,8 @@ to paint-plot-hh-yield-gap [hh-yield-gaps]
     
     if (any? luthhs)
     [
-      plotxy ticks mean map [? -> item lut-id ?] hh-yield-gaps
+      let mean-yield-gap mean map [? -> item lut-id ?] hh-yield-gaps
+      plotxy ticks mean-yield-gap
     ]
   ]
   
@@ -428,16 +431,24 @@ to-report calc-hh-yield-gaps
       let sum_actual_yield sum [p_actual_production] of h_patches with [p_landuse = lut-id]
       let sum_optimal_yield sum [p_optimal_production] of h_patches with [p_landuse = lut-id]
       
+      ;; Code to check whether there are negative yields (-> Error!, see econ_production.nls, leontief function)
+      if (sum_optimal_yield < 0) [
+        type "who: " print who
+        type "sum_optimal_yield: " print sum_optimal_yield
+        ;type "lut-id: " print lut-id
+        ;type "count patches: " print count h_patches with [p_landuse = lut-id]
+      ]
+      
+      
       ;; If there is any optimal yield, calculate the yield gap:
       let yield-gap-lut ifelse-value (sum_optimal_yield > 0) [(sum_optimal_yield - sum_actual_yield) / sum_optimal_yield][0]
       
       set my_yield_gaps lput yield-gap-lut my_yield_gaps
-      print  my_yield_gaps
+      ;print  my_yield_gaps
     ]
     
     set yield_gaps_all_hhs lput my_yield_gaps yield_gaps_all_hhs
   ]
-  
   report yield_gaps_all_hhs
 end
 

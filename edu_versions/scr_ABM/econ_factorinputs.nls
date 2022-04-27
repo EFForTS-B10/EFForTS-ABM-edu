@@ -29,7 +29,7 @@ To-report determine-factor-inputs-for-one-option [option-matrix wealth]
   matrix:set-row factor-inputs 0 h_field_id_list ;set first row of factor-inputs      
   
   let marginal-gains-fields calculate-marginal-gains-one-option option-matrix ;list of marginal gains for all fields, all marginal gains are >=0
-  ;print(word "maringal gains: " marginal-gains-fields)
+  ;print(word "marginal gains: " marginal-gains-fields)
   
   ;start distributing the (remaining) wealth in the order of decreasing marginal gains   
   let counter 0
@@ -38,7 +38,8 @@ To-report determine-factor-inputs-for-one-option [option-matrix wealth]
     let max-marginal-gain max marginal-gains-fields ;start with the field with highest marginal gain 
     let position-of-max-marginal-gain position max-marginal-gain marginal-gains-fields  ;position item list 
      
-    set marginal-gains-fields replace-item position-of-max-marginal-gain marginal-gains-fields -1  ;marker for fields for which factor input is are already calculated      
+    set marginal-gains-fields replace-item position-of-max-marginal-gain marginal-gains-fields -99999  ;marker for fields for which factor input is are already calculated      
+    ; originally -1, changed by SebER; because of the outcommented code below, marginal gain can be smaller than -1
     
     ; This outcommented part below makes sense somehow, as if the maximal marginal gain from a cell is negative, 
     ; it does not make sense to invest labor or technical inputs into it and thereby increase the costs further.
@@ -74,7 +75,7 @@ To-report determine-factor-inputs-for-one-option [option-matrix wealth]
       ;print (word "labor: " optimal-labor-cell " /  tinput: " optimal-tinput-cell)
       
       matrix:set factor-inputs 1 position-of-max-marginal-gain optimal-labor-cell ;store factor for this field input in a matrix  
-      matrix:set factor-inputs 2 position-of-max-marginal-gain optimal-tinput-cell
+      matrix:set factor-inputs 2 position-of-max-marginal-gain optimal-tinput-cell 
 
     ]
     [  ;wealth cannot cover optimal labor and tinput, therefore reduce factor input of this field such that the total wealth is consumed
@@ -87,13 +88,14 @@ To-report determine-factor-inputs-for-one-option [option-matrix wealth]
       
       matrix:set factor-inputs 1 position-of-max-marginal-gain item 0 reduced-factor-inputs
       matrix:set factor-inputs 2 position-of-max-marginal-gain item 1 reduced-factor-inputs 
+
     ]      
     ;] 
    
     set counter counter + 1   
   ]
   
- ;print (word "fact end: " matrix:pretty-print-text factor-inputs)
+  ;print (word "fact end: " matrix:pretty-print-text factor-inputs)
    
   report factor-inputs   
   
@@ -140,16 +142,15 @@ To-report calculated-reduced-factor-inputs-cell [hwealth option-matrix patch-id]
     [
       let cost-one-unit-production (opt-labor-cost + opt-tinput-cost) / max-production ;labor and tinput costs for one unit of production
       let affordable-units-production hwealth / cost-one-unit-production ;household can affort this number of units
-      set reduced-labor-input (opt-labor / max-production) * affordable-units-production ;ToDo check if this is correc
+      set reduced-labor-input (opt-labor / max-production) * affordable-units-production ;ToDo check if this is correct
       set reduced-tinput (opt-tinput / max-production) * affordable-units-production ;ToDo check if this is correct
    
       ;test: the summed up reduced labor-costs and tinput-costs needs to equal wealth
       let labor-cost-reduced reduced-labor-input * wage
-      let tinput-cost-reduced reduced-tinput * price-tinput
-     
+      let tinput-cost-reduced reduced-tinput * price-tinput    
     ]
   ]
- 
+  
   report (list reduced-labor-input reduced-tinput)
 End  
 
