@@ -58,9 +58,7 @@ end
 to-report hh.count
   report count hhs
 end
-to-report hh.count.immigrant
-  report count hhs with [h_immigrant? = TRUE]
-end
+
 to-report hh.area.mean
   let hh.area 0
   if (any? hhs)

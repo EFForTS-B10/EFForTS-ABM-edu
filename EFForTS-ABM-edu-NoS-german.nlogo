@@ -176,12 +176,10 @@ hhs-own
 
 ; Main Setup procedure:
 To setup-with-external-maps
-  print " "
-  print " "
-  print["Setting up"]
+  print["setting up"]
 
   ; control randomness
-  set-rand-seed
+  set-rnd-seed
 
   ; Read land-use parameter from files in "par_ABM" folder
   read-lut-parameters
@@ -226,7 +224,6 @@ To setup-with-external-maps
 
   ; Reset the time counter
   reset-ticks
-  print "[Set up finished!]"
 
 End
 

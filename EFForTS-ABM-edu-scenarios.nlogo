@@ -88,20 +88,6 @@ patches-own
   p_invest                 ; investment costs of this cell
   p_actual_production      ; actual production of this cell
   p_optimal_production     ; optimal production of this cell
-
-  ;; Variables used by biodiv_birds_mahnken module:
-  p_beetlesRichness
-  p_antsRichness
-  p_canopy
-  p_luDiversity
-  p_bird_richness
-
-  ;; Variables used by biodiv_plants_invest modules:
-  p_landuse_invest         ; patch land use and land cover (LULC) integer, converted from p_landuse for generation of maps
- ; p_impact-value
-  p_impact-location        ; location of corresponding impacts; TRUE means impact located on patch FALSE means no impact located
-  p_habitat_quality        ; variable for storing habitat quality
-
 ]
 
 luts-own
@@ -160,9 +146,7 @@ hhs-own
   h_inefficiencies    ; inefficiency factors [0,1]
   h_inefficiencies_temp ; inefficiency factors [0,1]
   h_connected_hhs             ; other households that are connected within the social network
-  h_immigrant?
   h_management       ; List with management ids for each LUT
-  h_landmarket
   h_land-use-change
 ]
 
@@ -179,7 +163,7 @@ To setup-with-external-maps
   print["setting up"]
 
   ; control randomness
-  set-rand-seed
+  set-rnd-seed
 
   ; Read land-use parameter from files in "par_ABM" folder
   read-lut-parameters

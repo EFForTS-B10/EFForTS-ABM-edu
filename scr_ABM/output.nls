@@ -32,7 +32,7 @@ End
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 to paint-hhs
-ask hhs [set color ifelse-value (h_immigrant? = TRUE) [hh-color + 10][hh-color]] 
+ask hhs [set color hh-color]
 end
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

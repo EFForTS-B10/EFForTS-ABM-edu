@@ -81,16 +81,16 @@ end
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To set-rand-seed
+To set-rnd-seed
   ;; Set/write random seed
   ifelse (reproducible? = TRUE) 
   [
     random-seed rnd-seed
   ]
   [
-    set rand-seed new-seed 
-    print (word "EFForTS-ABM random seed: " rand-seed)
-    random-seed rand-seed
+    set rnd-seed new-seed 
+    print (word "EFForTS-ABM random seed: " rnd-seed)
+    random-seed rnd-seed
   ]
 
 
