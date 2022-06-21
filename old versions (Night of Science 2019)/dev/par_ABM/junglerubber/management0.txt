@@ -1,9 +1,0 @@
-landuse,junglerubber
-management,junglerubber
-labor_function,[a -> lut_function_labor_junglerubber a]
-tinput_function,[a -> lut_function_tinput_junglerubber a]
-invest_function,[a -> lut_function_invest_junglerubber a]
-price_tinput,0.5
-wages,1.6
-yield_factor,1
-external_income_factor,1

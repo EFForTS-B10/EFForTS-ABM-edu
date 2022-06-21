@@ -1,9 +1,0 @@
-landuse,oilpalm
-management,conventional1
-labor_function,[a -> lut_function_labor_oilpalm a]
-tinput_function,[a -> lut_function_tinput_oilpalm a]
-invest_function,[a -> lut_function_invest_oilpalm a]
-price_tinput,0.5
-wages,1.5
-yield_factor,1
-external_income_factor,1
