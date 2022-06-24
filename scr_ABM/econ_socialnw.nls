@@ -82,6 +82,7 @@ end
 
 to setup_social_networks
   
+  if learning [ ; don't create network if there is no learning (and no landmarket)
   type "Set up social networks"
   ;; Initialize connected hhs:
   ask hhs
@@ -129,6 +130,7 @@ to setup_social_networks
     ]
   ] 
   print " finished!"
+  ]
 end
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
