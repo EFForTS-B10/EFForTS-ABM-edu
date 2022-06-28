@@ -1,0 +1,1 @@
+# Educational versions of the EfforTS-ABM model
